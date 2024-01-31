@@ -3,7 +3,7 @@
 
 BASH_OPTION=bash
 
-IMG=iscilab/tm5-pybullet:cuda-20-04
+IMG=iscilab/pybullet:cuda-20-04
 containerid=$(docker ps -qf "ancestor=${IMG}") && echo $containerid
 
 xhost +
@@ -14,8 +14,8 @@ then
         --privileged \
         -e DISPLAY=${DISPLAY} \
         -e LINES="$(tput lines)" \
-        tm5_pybullet \
+        rl_matt \
         $BASH_OPTION
 else
-    docker start -i tm5_pybullet
+    docker start -i pybullet
 fi
