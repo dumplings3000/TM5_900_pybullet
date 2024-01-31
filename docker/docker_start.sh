@@ -14,7 +14,7 @@ then
         --privileged \
         -e DISPLAY=${DISPLAY} \
         -e LINES="$(tput lines)" \
-        rl_matt \
+        pybullet \
         $BASH_OPTION
 else
     docker start -i pybullet
