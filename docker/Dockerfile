@@ -1,9 +1,9 @@
 
 FROM nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 ENV ros1_distro=noetic
 ###################################### user #####################################
 

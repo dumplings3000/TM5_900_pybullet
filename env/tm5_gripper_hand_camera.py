@@ -11,6 +11,12 @@ import math
 
 class TM5:
     def __init__(self, stepsize=1e-3, realtime=0, init_joints=None, base_shift=[0, 0, 0]):
+        '''
+        1.初始化一些成员变量，比如时间 t、步长 stepsize、实时模式 realtime 和关节初始化 init_joints。
+        2.定义了控制模式为“位置控制”。
+        3.设置了比例和微分控制增益以及最大扭矩。
+        4.连接到PyBullet仿真环境并加载机器人的URDF模型（统一机器人描述格式），设定基础位置及加载相关参数。
+        '''
         self.t = 0.0
         self.stepsize = stepsize
         self.realtime = realtime
@@ -28,16 +34,16 @@ class TM5:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         p.setAdditionalSearchPath(current_dir + "/models")
         print(current_dir + "/models")
-        self.robot = p.loadURDF("tm5_900/tm5_900_with_gripper.urdf",
-                                useFixedBase=True,
-                                flags=p.URDF_USE_SELF_COLLISION)
-        self._base_position = [-0.05 - base_shift[0], 0.0 - base_shift[1], -0.65 - base_shift[2]]
+        self.robot = p.loadURDF("mobile_manipulator.urdf",
+                                 useFixedBase=False,
+                                 flags=p.URDF_USE_SELF_COLLISION)
+        self._base_position = [0.0 - base_shift[0], 0.0 - base_shift[1], 0.0 - base_shift[2]]
         self.pandaUid = self.robot
 
         # robot parameters
         self.dof = p.getNumJoints(self.robot)
 
-        # To control the gripper
+        # # To control the gripper
         mimic_parent_name = 'finger_joint'
         mimic_children_names = {'right_outer_knuckle_joint': 1,
                                 'left_inner_knuckle_joint': 1,
@@ -74,57 +80,73 @@ class TM5:
         self.q_min = []
         self.q_max = []
         self.target_pos = []
+        self.pandaEndEffectorIndex = 14
         self.target_torque = []
-        self.pandaEndEffectorIndex = 7
         self._joint_min_limit = np.array([-4.712385, -3.14159, -3.14159, -3.14159, -3.14159, -4.712385, 0, 0, 0])
         self._joint_max_limit = np.array([4.712385, 3.14159, 3.14159,  3.14159,  3.14159,  4.712385, 0, 0, 0.8])
         self.gripper_range = [0, 0.085]
 
         for j in range(self.dof):
-            p.changeDynamics(self.robot, j, linearDamping=0, angularDamping=0)
+            if j >=7:
+                p.changeDynamics(self.robot, j, linearDamping=0, angularDamping=0)
+            else:
+                p.changeDynamics(self.robot, j, lateralFriction=0.3)
             joint_info = p.getJointInfo(self.robot, j)
-            if j in range(1, 10):
+            if j in range(8, 17):
                 self.joints.append(j)
                 self.q_min.append(joint_info[8])
                 self.q_max.append(joint_info[9])
-                self.target_pos.append((self.q_min[j-1] + self.q_max[j-1])/2.0)
+                self.target_pos.append((self.q_min[j-8] + self.q_max[j-8])/2.0)
                 self.target_torque.append(0.)
         self.reset(init_joints)
 
     def reset(self, joints=None):
+        '''
+        重置机器人的状态和关节位置，可以传入指定的关节位置
+        '''
         self.t = 0.0
         self.control_mode = "position"
         p.resetBasePositionAndOrientation(self.pandaUid, self._base_position,
                                           [0.000000, 0.000000, 0.000000, 1.000000])
+
         if joints is None:
             self.target_pos = [
                     0.2, -1, 2, 0, 1.571, 0.0, 0.0, 0.0, 0.0]
 
             self.target_pos = self.standardize(self.target_pos)
-            for j in range(1, 10):
-                self.target_torque[j-1] = 0.
-                p.resetJointState(self.robot, j, targetValue=self.target_pos[j-1])
+            for j in range(8, 17):
+                self.target_torque[j-8] = 0.
+                p.resetJointState(self.robot, j, targetValue=self.target_pos[j-8])
 
         else:
             joints = self.standardize(joints)
-            for j in range(1, 10):
-                self.target_pos[j-1] = joints[j-1]
-                self.target_torque[j-1] = 0.
-                p.resetJointState(self.robot, j, targetValue=self.target_pos[j-1])
+            for j in range(8, 17):
+                self.target_pos[j-8] = joints[j-8]
+                self.target_torque[j-8] = 0.
+                p.resetJointState(self.robot, j, targetValue=self.target_pos[j-8])
         self.resetController()
         self.setTargetPositions(self.target_pos)
 
     def step(self):
+        '''
+        用于在仿真中执行一次步进，以更新机器人的状态。
+        '''
         self.t += self.stepsize
         p.stepSimulation()
 
     def resetController(self):
+        """
+        重置机器人控制器，设定所有关节的控制模式为速度控制并将力设置为零。
+        """
         p.setJointMotorControlArray(bodyUniqueId=self.robot,
                                     jointIndices=self.joints,
                                     controlMode=p.VELOCITY_CONTROL,
-                                    forces=[0. for i in range(1, 10)])
+                                    forces=[0. for i in range(8, 17)])
 
     def standardize(self, target_pos):
+        '''
+        确保目标关节位置在定义的最小和最大限制之内，并在需要时扩展目标位置数组。
+        '''
         if len(target_pos) == 7:
             if type(target_pos) == list:
                 target_pos[6:6] = [0, 0]
@@ -137,6 +159,9 @@ class TM5:
         return target_pos
 
     def setTargetPositions(self, target_pos):
+        '''
+        设定机器人的目标位置，并将目标位置转化为PyBullet的控制指令。
+        '''
         self.target_pos = self.standardize(target_pos)
         p.setJointMotorControlArray(bodyUniqueId=self.robot,
                                     jointIndices=self.joints,
@@ -147,6 +172,9 @@ class TM5:
                                     velocityGains=self.position_control_gain_d)
 
     def getJointStates(self):
+        '''
+        获取并返回当前关节的位置和速度状态。
+        '''
         joint_states = p.getJointStates(self.robot, self.joints)
 
         joint_pos = [x[0] for x in joint_states]
@@ -158,18 +186,40 @@ class TM5:
         return joint_pos, joint_vel
 
     def solveInverseKinematics(self, pos, ori):
-        return list(p.calculateInverseKinematics(self.robot,
-                    7, pos, ori,
-                    maxNumIterations=500,
-                    residualThreshold=1e-8))
-
+        '''
+        计算给定位置和方向的逆运动学解，返回相应的关节角度。
+        '''
+        jointPoses = list(p.calculateInverseKinematics(self.robot,
+                                  14, pos, ori,
+                                  maxNumIterations=500,
+                                  residualThreshold=1e-8))
+        jointPoses[12] = 0.0
+        action = jointPoses[6:13]
+        return action
+        
     def move_gripper(self, open_length):
+        '''
+        控制机械手的开合，接收一个开合长度并更新抓手的目标角度。
+
+        '''
         open_length = np.clip(open_length, *self.gripper_range)
         open_angle = 0.715 - math.asin((open_length - 0.010) / 0.1143)  # angle calculation
         # Control the mimic gripper joint(s)
         p.setJointMotorControl2(self.robot, self.mimic_parent_id, p.POSITION_CONTROL, targetPosition=open_angle,
                                 force=100)
+        
+    def AMR_control(self, mode, value_l,value_r):
+        '''
+        接收两个控制信号并执行相应的动作。
 
+        '''
+        if mode == "position":
+            p.setJointMotorControl2(self.pandaUid, jointIndex=1, controlMode=p.POSITION_CONTROL, targetPosition=value_r, force=10)
+            p.setJointMotorControl2(self.pandaUid, jointIndex=2, controlMode=p.POSITION_CONTROL, targetPosition=value_l, force=10)
+            
+        elif mode == "velocity":
+            p.setJointMotorControl2(self.pandaUid, jointIndex=1, controlMode=p.VELOCITY_CONTROL, targetVelocity=value_r, force=10)
+            p.setJointMotorControl2(self.pandaUid, jointIndex=2, controlMode=p.VELOCITY_CONTROL, targetVelocity=value_l, force=10)
 
 if __name__ == "__main__":
     robot = TM5(realtime=1)

@@ -27,13 +27,21 @@ ${SUDO} pip3 install -vU pygccxml pyplusplus
 ${SUDO} add-apt-repository ppa:pypy/ppa
 ${SUDO} apt-get update
 ${SUDO} apt-get -y install pypy3
-#install ompl
-git clone -b 1.6.0 https://github.com/ompl/ompl.git
-cd ompl
-mkdir -p build/Release
-cd build/Release
-cmake ../..
-make -j 4 update_bindings
-make -j 4
-sudo make install
+# #install ompl
+# git clone -b 1.6.0 https://github.com/ompl/ompl.git
+# cd ompl
+# mkdir -p build/Release
+# cd build/Release
+# cmake ../..
+# make -j 4 update_bindings
+# make -j 4
+# sudo make install
 # cp -r /usr/lib/python3.8/site-packages/* /usr/lib/python3/dist-packages/
+
+# change py-bindings/generate_bindings.py line 194
+# try:
+#     self.ompl_ns.class_(f'SpecificParam< std::string >').rename('SpecificParamString')
+# except:
+#     self.ompl_ns.class_(f'SpecificParam< std::basic_string< char > >').rename('SpecificParamString')
+
+# pip3 install pygccxml==2.2.1

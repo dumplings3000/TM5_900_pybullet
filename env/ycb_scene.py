@@ -19,22 +19,6 @@ import json
 from itertools import product
 import math
 
-BASE_LINK = -1
-MAX_DISTANCE = 0.000
-
-
-def get_num_joints(body, CLIENT=None):
-    return p.getNumJoints(body, physicsClientId=CLIENT)
-
-
-def get_links(body, CLIENT=None):
-    return list(range(get_num_joints(body, CLIENT)))
-
-
-def get_all_links(body, CLIENT=None):
-    return [BASE_LINK] + list(get_links(body, CLIENT))
-
-
 class SimulatedYCBEnv():
     def __init__(self,
                  renders=True,
@@ -82,7 +66,7 @@ class SimulatedYCBEnv():
         self.connect()
 
     def init_constant(self):
-        self._shift = [0.8, 0.8, 0.8]  # to work without axis in DIRECT mode
+        self._shift = [0.0, 0.0, 0.0]  # to work without axis in DIRECT mode
         self.root_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
         self._standoff_dist = 0.08
 
@@ -136,18 +120,6 @@ class SimulatedYCBEnv():
         self.disconnect()
         self.connect()
 
-        # Set the camera  .
-        look = [0.1 - self._shift[0], 0.2 - self._shift[1], 0 - self._shift[2]]
-        distance = 2.5
-        pitch = -56
-        yaw = 245
-        roll = 0.
-        fov = 20.
-        aspect = float(self._window_width) / self._window_height
-        self.near = 0.1
-        self.far = 10
-        self._view_matrix = p.computeViewMatrixFromYawPitchRoll(look, distance, yaw, pitch, roll, 2)
-        self._proj_matrix = p.computeProjectionMatrixFOV(fov, aspect, self.near, self.far)
         self._light_position = np.array([-1.0, 0, 2.5])
 
         p.resetSimulation()
@@ -160,12 +132,41 @@ class SimulatedYCBEnv():
         # Set table and plane
         plane_file = os.path.join(self.root_dir,  'data/objects/floor/model_normalized.urdf')  # _white
         table_file = os.path.join(self.root_dir,  'data/objects/table/models/model_normalized.urdf')
-
-        self.obj_path = [plane_file, table_file]
-        self.plane_id = p.loadURDF(plane_file, [0 - self._shift[0], 0 - self._shift[1], -.82 - self._shift[2]])
-        self.table_pos = np.array([0.5 - self._shift[0], 0.0 - self._shift[1], -.82 - self._shift[2]])
+        self.plane_id = p.loadURDF(plane_file, [0 - self._shift[0], 0 - self._shift[1], 0 - self._shift[2]])
+        self.table_pos = np.array([0.9 - self._shift[0], 0.0 - self._shift[1], 0.05 - self._shift[2]])
         self.table_id = p.loadURDF(table_file, self.table_pos[0], self.table_pos[1], self.table_pos[2],
                                    0.707, 0., 0., 0.707)
+                                   
+        # Set the camera  .
+        look = [0.9 - self._shift[0], 0.0 - self._shift[1], 0 - self._shift[2]]
+        distance = 2.5
+        pitch = -56
+        yaw = 245
+        roll = 0.
+        fov = 20.
+        aspect = float(self._window_width) / self._window_height
+        self.near = 0.1
+        self.far = 10
+        self._view_matrix = p.computeViewMatrixFromYawPitchRoll(look, distance, yaw, pitch, roll, 2)
+        self._proj_matrix = p.computeProjectionMatrixFOV(fov, aspect, self.near, self.far)
+                                   
+        object_bbox = p.getAABB(self.table_id)
+        self.length_weight = (object_bbox[1][0] - object_bbox[0][0]) / 2
+        self.width_weight = (object_bbox[1][1] - object_bbox[0][1]) / 2
+        self.height_weight = (object_bbox[1][2] - object_bbox[0][2]) / 2
+        self.table_radius = min(self.length_weight, self.width_weight)  # 或者使用合适的半径值
+
+        # Load shelf
+        shelf_file = os.path.join(self.root_dir,  'data/objects/shelf/model.urdf')
+        shelf_2_file = os.path.join(self.root_dir,  'data/objects/shelf_2/model.urdf')
+        shelf_3_file = os.path.join(self.root_dir,  'data/objects/shelf_3/model.urdf')
+        shelf_4_file = os.path.join(self.root_dir,  'data/objects/shelf_4/model.urdf')       
+        shelf_files = [shelf_file, shelf_2_file, shelf_3_file, shelf_4_file]
+        self.load_shelf(shelf_files)
+
+        self.obj_path = [plane_file, table_file, self.shelf1_id, self.shelf2_id, self.shelf3_id, 
+                         self.shelf4_id, self.shelf5_id, self.shelf6_id, self.shelf7_id, self.shelf8_id,
+                         self.shelf9_id, self.shelf10_id,self.shelf11_id, self.shelf12_id]
 
         # Intialize robot and objects
         if init_joints is None:
@@ -175,6 +176,8 @@ class SimulatedYCBEnv():
             self._panda = TM5(stepsize=self._timeStep, init_joints=init_joints, base_shift=self._shift)
             for _ in range(1000):
                 p.stepSimulation()
+
+        p.setCollisionFilterPair(self._panda.robot, self.plane_id, -1, -1, 1)
 
         if not self.objects_loaded:
             self._objectUids = self.cache_objects()
@@ -188,107 +191,82 @@ class SimulatedYCBEnv():
         self.init_target_height = self._get_target_relative_pose()[2, 3]
         return None  # observation
 
-    def step(self, action, delta=False, obs=True, repeat=150, config=False, vis=False):
+    def load_shelf(self, shelf_files):
+        self.shelf_ids = []
+        # 0 (0, 0, 0, 1),90 (0, 0, 0.707, 0.707),180 (0, 0, 1, 0),270 (0, 0, 0.707, -0.707)
+        selected_shelf_file = random.choice(shelf_files)
+        # selected_shelf_file = shelf_files[3]
+        short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
+        self.shelf1_id = p.loadURDF(selected_shelf_file, [(short_length - self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 0, 1],useFixedBase=True)
+        self.shelf2_id = p.loadURDF(selected_shelf_file, [-(short_length - self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 1, 0],useFixedBase=True)
+        self.shelf7_id = p.loadURDF(selected_shelf_file, [(short_length + self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 1, 0],useFixedBase=True)
+        self.shelf8_id = p.loadURDF(selected_shelf_file, [-(short_length + self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 0, 1],useFixedBase=True)
+        
+        selected_shelf_file = random.choice(shelf_files)
+        # selected_shelf_file = shelf_files[3]
+        short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
+        self.shelf3_id = p.loadURDF(selected_shelf_file, [(short_length - self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 0, 1],useFixedBase=True)
+        self.shelf4_id = p.loadURDF(selected_shelf_file, [-(short_length - self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 1, 0],useFixedBase=True)
+        self.shelf9_id = p.loadURDF(selected_shelf_file, [(short_length + self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 1, 0],useFixedBase=True)
+        self.shelf10_id = p.loadURDF(selected_shelf_file, [-(short_length + self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 0, 1],useFixedBase=True)
+        
+        selected_shelf_file = random.choice(shelf_files)
+        # selected_shelf_file = shelf_files[3]
+        short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
+        self.shelf5_id =p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], -(short_length - self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 0.707, -0.707],useFixedBase=True)
+        self.shelf6_id =p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], (short_length - self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 0.707, 0.707],useFixedBase=True)
+        self.shelf11_id = p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], -(short_length + self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 0.707, 0.707],useFixedBase=True)
+        self.shelf12_id = p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], (short_length + self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
+                   [0, 0, 0.707, -0.707],useFixedBase=True)
+
+    def check_which_shelf(self, shelf_set, shelf_id):
+        if shelf_id == shelf_set[0]:
+            self.shift_shelf = 0.21
+            short_length = 1.2
+            long_length = 3.5
+        elif shelf_id == shelf_set[1]:
+            self.shift_shelf = 0.022
+            short_length = 1.5
+            long_length = 3.5
+        elif shelf_id == shelf_set[2]:
+            self.shift_shelf = 0.21
+            short_length = 1.2
+            long_length = 3.5
+        elif shelf_id == shelf_set[3]:
+            self.shift_shelf = 0.23
+            short_length = 1.2
+            long_length = 3.5
+        return short_length, long_length
+
+    def cache_reset(self, init_joints, enforce_face_target, num_object=1, if_stack=True):
         """
-        Environment step.
-        """
-        action = self.process_action(action, delta, config)
-        self._panda.setTargetPositions(action)
-        for _ in range(int(repeat)):
-            p.stepSimulation()
-            if self._renders:
-                time.sleep(self._timeStep)
-
-        observation = self._get_observation(vis=vis)
-
-        reward = self.target_lifted()
-
-        return observation, reward, self._get_ef_pose(mat=True)
-
-    def _get_observation(self, pose=None, vis=False, raw_data=False):
-        """
-        Get observation
-        """
-
-        object_pose = self._get_target_relative_pose('ef')  # self._get_relative_ef_pose()
-        ef_pose = self._get_ef_pose('mat')
-
-        joint_pos, joint_vel = self._panda.getJointStates()
-        near, far = self.near, self.far
-        view_matrix, proj_matrix = self._view_matrix, self._proj_matrix
-        camera_info = tuple(view_matrix) + tuple(proj_matrix)
-        hand_cam_view_matrix, hand_proj_matrix, lightDistance, lightColor, lightDirection, near, far = self._get_hand_camera_view(pose)
-        camera_info += tuple(hand_cam_view_matrix.flatten()) + tuple(hand_proj_matrix)
-        _, _, rgba, depth, mask = p.getCameraImage(width=self._window_width,
-                                                   height=self._window_height,
-                                                   viewMatrix=tuple(hand_cam_view_matrix.flatten()),
-                                                   projectionMatrix=hand_proj_matrix,
-                                                   physicsClientId=self.cid,
-                                                   renderer=p.ER_BULLET_HARDWARE_OPENGL)
-
-        depth = (far * near / (far - (far - near) * depth) * 5000).astype(np.uint16)  # transform depth from NDC to actual depth
-        intrinsic_matrix = projection_to_intrinsics(hand_proj_matrix, self._window_width, self._window_height)
-        if raw_data:
-            mask[mask <= 2] = -1
-            mask[mask > 0] -= 3
-            obs = np.concatenate([rgba[..., :3], depth[..., None], mask[..., None]], axis=-1)
-            obs = self.process_image(obs[..., :3], obs[..., [3]], obs[..., [4]], tuple(self._resize_img_size), if_raw=True)
-            point_state = backproject_camera_target(obs[3].T, intrinsic_matrix, None)  # obs[4].T
-            point_state[1] *= -1
-            obs = (point_state, obs)
-        else:
-            mask[mask >= 0] += 1  # transform mask to have target id 0
-            target_idx = self.target_idx + 4
-
-            mask[mask == target_idx] = 0
-            mask[mask == -1] = 50
-            mask[mask != 0] = 1
-
-            obs = np.concatenate([rgba[..., :3], depth[..., None], mask[..., None]], axis=-1)
-            obs = self.process_image(obs[..., :3], obs[..., [3]], obs[..., [4]], tuple(self._resize_img_size))
-            point_state = backproject_camera_target(obs[3].T, intrinsic_matrix, obs[4].T)  # obs[4].T
-
-            point_state[1] *= -1
-            point_state = self.process_pointcloud(point_state, vis)
-            obs = (point_state, obs)
-        pose_info = (object_pose, ef_pose)
-        return [obs, joint_pos, camera_info, pose_info]
-
-    def retract(self):
-        """
-        Move the arm to lift the object.
+        Hack to move the loaded objects around to avoid loading multiple times
         """
 
-        cur_joint = np.array(self._panda.getJointStates()[0])
-        cur_joint[-1] = 0.8  # close finger
-        observations = [self.step(cur_joint, repeat=300, config=True, vis=False)[0]]
-        pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
+        self._panda.reset(init_joints)
+        self.place_back_objects()
+        self._randomly_place_objects_pack(self._get_random_object(num_object), scale=1, if_stack=if_stack)
 
-        for i in range(10):
-            pos = (pos[0], pos[1], pos[2] + 0.03)
-            jointPoses = np.array(p.calculateInverseKinematics(self._panda.pandaUid,
-                                                               self._panda.pandaEndEffectorIndex, pos,
-                                                               maxNumIterations=500,
-                                                               residualThreshold=1e-8))
-            jointPoses[6] = 0.8
-            jointPoses = jointPoses[:7].copy()
-            obs = self.step(jointPoses, config=True)[0]
+        self.retracted = False
+        self.collided = False
+        self.collided_before = False
+        self.obj_names, self.obj_poses = self.get_env_info()
+        self.init_target_height = self._get_target_relative_pose()[2, 3]
 
-        self.retracted = True
-        rew = self._reward()
-        return rew
-
-    def _reward(self):
-        """
-        Calculates the reward for the episode.
-        """
-        reward = 0
-
-        if self.retracted and self.target_lifted():
-            print('target {} lifted !'.format(self.target_name))
-            reward = 1
-        return reward
-
+        observation = self.enforce_face_target() if enforce_face_target else self._get_observation()
+        return observation
+    
     def cache_objects(self):
         """
         Load all YCB objects and set up
@@ -296,11 +274,14 @@ class SimulatedYCBEnv():
 
         obj_path = os.path.join(self.root_dir, 'data/objects/')
         objects = self.obj_indexes
+        print("self.obj_indexes:", self.obj_indexes)
         obj_path = [obj_path + objects[i] for i in self._all_obj]
 
         self.target_obj_indexes = [self._all_obj.index(idx) for idx in self._target_objs]
         pose = np.zeros([len(obj_path), 3])
-        pose[:, 0] = -0.5 - np.linspace(0, 8, len(obj_path))
+        pose[:, 0] = -8 
+        pose[:, 1] = -8 - np.linspace(0, 8, len(obj_path))
+        pose[:, 2] = 0.2
         pos, orn = p.getBasePositionAndOrientation(self._panda.pandaUid)
         objects_paths = [p_.strip() + '/' for p_ in obj_path]
         objectUids = []
@@ -324,7 +305,7 @@ class SimulatedYCBEnv():
             half_height = float(point_z.max()) / 2 if len(point_z) > 0 else 0.01
             self.object_heights.append(half_height)
             objectUids.append(uid)
-            p.setCollisionFilterPair(uid, self.plane_id, -1, -1, 0)
+            p.setCollisionFilterPair(uid, self.plane_id, -1, -1, 1)
 
             if self._disable_unnece_collision:
                 for other_uid in objectUids:
@@ -333,103 +314,12 @@ class SimulatedYCBEnv():
         self.placed_objects = [False] * len(self.obj_path)
         return objectUids
 
-    def cache_reset(self, init_joints, enforce_face_target, num_object=1, if_stack=True):
-        """
-        Hack to move the loaded objects around to avoid loading multiple times
-        """
-
-        self._panda.reset(init_joints)
-        self.place_back_objects()
-        self._randomly_place_objects_pack(self._get_random_object(num_object), scale=1, if_stack=if_stack)
-
-        self.retracted = False
-        self.collided = False
-        self.collided_before = False
-        self.obj_names, self.obj_poses = self.get_env_info()
-        self.init_target_height = self._get_target_relative_pose()[2, 3]
-
-        observation = self.enforce_face_target() if enforce_face_target else self._get_observation()
-        return observation
 
     def place_back_objects(self):
         for idx, obj in enumerate(self._objectUids):
             if self.placed_objects[idx]:
                 p.resetBasePositionAndOrientation(obj, self.placed_object_poses[idx][0], self.placed_object_poses[idx][1])
             self.placed_objects[idx] = False
-
-    def _add_mesh(self, obj_file, trans, quat, scale=1):
-        """
-        Add a mesh with URDF file.
-        """
-        bid = p.loadURDF(obj_file, trans, quat, globalScaling=scale, flags=p.URDF_ENABLE_CACHED_GRAPHICS_SHAPES)
-        return bid
-
-    def reset_joint(self, init_joints):
-        if init_joints is not None:
-            self._panda.reset(np.array(init_joints).flatten())
-
-    def process_action(self, action, delta=False, config=False):
-        """
-        Process different action types
-        """
-        # transform to local coordinate
-        if config:
-            if delta:
-                cur_joint = np.array(self._panda.getJointStates()[0])
-                action = cur_joint + action
-        else:
-            pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
-
-            pose = np.eye(4)
-            pose[:3, :3] = quat2mat(tf_quat(orn))
-            pose[:3, 3] = pos
-
-            pose_delta = np.eye(4)
-            pose_delta[:3, :3] = euler2mat(action[3], action[4], action[5])
-            pose_delta[:3, 3] = action[:3]
-
-            new_pose = pose.dot(pose_delta)
-            orn = ros_quat(mat2quat(new_pose[:3, :3]))
-            pos = new_pose[:3, 3]
-
-            jointPoses = np.array(p.calculateInverseKinematics(self._panda.pandaUid,
-                                  self._panda.pandaEndEffectorIndex, pos, orn,
-                                  maxNumIterations=500,
-                                  residualThreshold=1e-8))
-            jointPoses[6] = 0.0
-            action = jointPoses[:7]
-        return action
-
-    def _get_hand_camera_view(self, cam_pose=None):
-        """
-        Get hand camera view
-        """
-        if cam_pose is None:
-            pos, orn = p.getLinkState(self._panda.pandaUid, 19)[4:6]
-            cam_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
-        cam_pose_mat = unpack_pose(cam_pose)
-
-        fov = 90
-        aspect = float(self._window_width) / (self._window_height)
-        hand_near = 0.035
-        hand_far = 2
-        hand_proj_matrix = p.computeProjectionMatrixFOV(fov, aspect, hand_near, hand_far)
-        hand_cam_view_matrix = se3_inverse(cam_pose_mat.dot(rotX(np.pi/2).dot(rotY(-np.pi/2)))).T  # z backward
-
-        lightDistance = 2.0
-        lightDirection = self.table_pos - self._light_position
-        lightColor = np.array([1., 1., 1.])
-        light_center = np.array([-1.0, 0, 2.5])
-        return hand_cam_view_matrix, hand_proj_matrix, lightDistance, lightColor, lightDirection, hand_near, hand_far
-
-    def target_lifted(self):
-        """
-        Check if target has been lifted
-        """
-        end_height = self._get_target_relative_pose()[2, 3]
-        if end_height - self.init_target_height > 0.08:
-            return True
-        return False
 
     def _randomly_place_objects_pack(self, urdfList, scale, if_stack=True, poses=None):
         '''
@@ -449,6 +339,7 @@ class SimulatedYCBEnv():
         if len(urdfList) == 1:
             return self._randomly_place_objects(urdfList=urdfList, scale=scale, poses=poses)
         else:
+            # print("the length of urdfList:", len(urdfList))
             if if_stack:
                 self.place_back_objects()
                 for i in range(len(urdfList)):
@@ -551,9 +442,15 @@ class SimulatedYCBEnv():
         """
         Randomize positions of each object urdf.
         """
+        # for plane
+        # xpos = self.table_pos[0] + length_weight * 2 * (self._blockRandom * random.random() - 0.5) - self._shift[0]
+        # ypos = self.table_pos[1] + width_weight * 2* (self._blockRandom * random.random() - 0.5) - self._shift[0]
+        # for circle
+        angle = random.uniform(0, 2 * math.pi)
+        radius = random.uniform(0, self.table_radius)     
 
-        xpos = 0.5 + 0.2 * (self._blockRandom * random.random() - 0.5) - self._shift[0]
-        ypos = 0.5 * self._blockRandom * (random.random() - 0.5) - self._shift[0]
+        xpos = self.table_pos[0] + 0.8 * radius * math.cos(angle) - self._shift[0]
+        ypos = self.table_pos[1] + 0.8 * radius * math.sin(angle) - self._shift[0]
         obj_path = '/'.join(urdfList[0].split('/')[:-1]) + '/'
 
         self.target_idx = self.obj_path.index(os.path.join(self.root_dir, obj_path))
@@ -563,10 +460,10 @@ class SimulatedYCBEnv():
         if self._use_acronym:
             object_bbox = p.getAABB(self._objectUids[self.target_idx])
             height_weight = (object_bbox[1][2] - object_bbox[0][2]) / 2
-            z_init = -.60 + 2.5 * height_weight
+            z_init = 0.4 + 1 * height_weight
         else:
             height_weight = self.object_heights[self.target_idx]
-            z_init = -.65 + 1.95 * height_weight
+            z_init = 0.4 + 1 * height_weight
         orn = p.getQuaternionFromEuler([x_rot, 0, np.random.uniform(-np.pi, np.pi)])
         p.resetBasePositionAndOrientation(self._objectUids[self.target_idx],
                                           [xpos, ypos,  z_init - self._shift[2]], [orn[0], orn[1], orn[2], orn[3]])
@@ -583,6 +480,183 @@ class SimulatedYCBEnv():
         if (self.target_name in self._filter_objects or ang > 50) and not self._use_acronym:  # self.target_name.startswith('0') and
             self.target_name = 'noexists'
         return []
+
+    def step(self, action, cmd_vel ,delta=False, obs=True, repeat=150, config=False, vis=False):
+        """
+        Environment step.
+        """
+        action = self.process_action(action, delta, config)
+        self._panda.setTargetPositions(action)
+        self._panda.AMR_control(control_type='velocity', lcmd_vel=cmd_vel[0], rcmd_vel=cmd_vel[1])
+        for _ in range(int(repeat)):
+            p.stepSimulation()
+            if self._renders:
+                time.sleep(self._timeStep)
+
+        observation = self._get_observation(vis=vis)
+
+        reward = self.target_lifted()
+
+        return observation, reward, self._get_ef_pose(mat=True)
+
+    def _get_observation(self, pose=None, vis=False, raw_data=False):
+        """
+        Get observation
+        """
+
+        object_pose = self._get_target_relative_pose('ef')  # self._get_relative_ef_pose()
+        ef_pose = self._get_ef_pose('mat')
+
+        joint_pos, joint_vel = self._panda.getJointStates()
+        near, far = self.near, self.far
+        view_matrix, proj_matrix = self._view_matrix, self._proj_matrix
+        camera_info = tuple(view_matrix) + tuple(proj_matrix)
+        hand_cam_view_matrix, hand_proj_matrix, lightDistance, lightColor, lightDirection, near, far = self._get_hand_camera_view(pose)
+        camera_info += tuple(hand_cam_view_matrix.flatten()) + tuple(hand_proj_matrix)
+        _, _, rgba, depth, mask = p.getCameraImage(width=self._window_width,
+                                                   height=self._window_height,
+                                                   viewMatrix=tuple(hand_cam_view_matrix.flatten()),
+                                                   projectionMatrix=hand_proj_matrix,
+                                                   physicsClientId=self.cid,
+                                                   renderer=p.ER_BULLET_HARDWARE_OPENGL)
+
+        depth = (far * near / (far - (far - near) * depth) * 5000).astype(np.uint16)  # transform depth from NDC to actual depth
+        intrinsic_matrix = projection_to_intrinsics(hand_proj_matrix, self._window_width, self._window_height)
+        if raw_data:
+            mask[mask <= 2] = -1
+            mask[mask > 0] -= 3
+            obs = np.concatenate([rgba[..., :3], depth[..., None], mask[..., None]], axis=-1)
+            obs = self.process_image(obs[..., :3], obs[..., [3]], obs[..., [4]], tuple(self._resize_img_size), if_raw=True)
+            point_state = backproject_camera_target(obs[3].T, intrinsic_matrix, None)  # obs[4].T
+            point_state[1] *= -1
+            obs = (point_state, obs)
+        else:
+            mask[mask >= 0] += 1  # transform mask to have target id 0
+            target_idx = self.target_idx + 4
+
+            mask[mask == target_idx] = 0
+            mask[mask == -1] = 50
+            mask[mask != 0] = 1
+
+            obs = np.concatenate([rgba[..., :3], depth[..., None], mask[..., None]], axis=-1)
+            obs = self.process_image(obs[..., :3], obs[..., [3]], obs[..., [4]], tuple(self._resize_img_size))
+            point_state = backproject_camera_target(obs[3].T, intrinsic_matrix, obs[4].T)  # obs[4].T
+
+            point_state[1] *= -1
+            point_state = self.process_pointcloud(point_state, vis)
+            obs = (point_state, obs)
+        pose_info = (object_pose, ef_pose)
+        return [obs, joint_pos, camera_info, pose_info]
+
+    def retract(self):
+        """
+        Move the arm to lift the object.
+        """
+
+        cur_joint = np.array(self._panda.getJointStates()[0])
+        cur_joint[-1] = 0.8  # close finger
+        observations = [self.step(cur_joint, repeat=300, config=True, vis=False)[0]]
+        pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
+
+        for i in range(10):
+            pos = (pos[0], pos[1], pos[2] + 0.03)
+            jointPoses = np.array(p.calculateInverseKinematics(self._panda.pandaUid,
+                                                               self._panda.pandaEndEffectorIndex, pos,
+                                                               maxNumIterations=500,
+                                                               residualThreshold=1e-8))
+            jointPoses[12] = 0.8
+            jointPoses = jointPoses[6:13].copy()
+            obs = self.step(jointPoses, config=True)[0]
+
+        self.retracted = True
+        rew = self._reward()
+        return rew
+
+    def _reward(self):
+        """
+        Calculates the reward for the episode.
+        """
+        reward = 0
+
+        if self.retracted and self.target_lifted():
+            print('target {} lifted !'.format(self.target_name))
+            reward = 1
+        return reward
+
+    def _add_mesh(self, obj_file, trans, quat, scale=1):
+        """
+        Add a mesh with URDF file.
+        """
+        bid = p.loadURDF(obj_file, trans, quat, globalScaling=scale, flags=p.URDF_ENABLE_CACHED_GRAPHICS_SHAPES)
+        return bid
+
+    def reset_joint(self, init_joints):
+        if init_joints is not None:
+            self._panda.reset(np.array(init_joints).flatten())
+
+    def process_action(self, action, delta=False, config=False):
+        """
+        Process different action types
+        """
+        # transform to local coordinate
+        if config:
+            if delta:
+                cur_joint = np.array(self._panda.getJointStates()[0])
+                action = cur_joint + action
+        else:
+            pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
+
+            pose = np.eye(4)
+            pose[:3, :3] = quat2mat(tf_quat(orn))
+            pose[:3, 3] = pos
+
+            pose_delta = np.eye(4)
+            pose_delta[:3, :3] = euler2mat(action[3], action[4], action[5])
+            pose_delta[:3, 3] = action[:3]
+
+            new_pose = pose.dot(pose_delta)
+            orn = ros_quat(mat2quat(new_pose[:3, :3]))
+            pos = new_pose[:3, 3]
+
+            jointPoses = np.array(p.calculateInverseKinematics(self._panda.pandaUid,
+                                  self._panda.pandaEndEffectorIndex, pos, orn,
+                                  maxNumIterations=500,
+                                  residualThreshold=1e-8))
+            jointPoses[12] = 0.0
+            action = jointPoses[6:13]
+        return action
+
+    def _get_hand_camera_view(self, cam_pose=None):
+        """
+        Get hand camera view
+        """
+        if cam_pose is None:
+            pos, orn = p.getLinkState(self._panda.pandaUid, 26)[4:6]
+            cam_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
+        cam_pose_mat = unpack_pose(cam_pose)
+
+        fov = 90
+        aspect = float(self._window_width) / (self._window_height)
+        hand_near = 0.035
+        hand_far = 2
+        hand_proj_matrix = p.computeProjectionMatrixFOV(fov, aspect, hand_near, hand_far)
+        hand_cam_view_matrix = se3_inverse(cam_pose_mat.dot(rotX(np.pi/2).dot(rotY(-np.pi/2)))).T  # z backward
+
+        lightDistance = 2.0
+        lightDirection = self.table_pos - self._light_position
+        lightColor = np.array([1., 1., 1.])
+        light_center = np.array([-1.0, 0, 2.5])
+        return hand_cam_view_matrix, hand_proj_matrix, lightDistance, lightColor, lightDirection, hand_near, hand_far
+
+    def target_lifted(self):
+        """
+        Check if target has been lifted
+        """
+        end_height = self._get_target_relative_pose()[2, 3]
+        if end_height - self.init_target_height > 0.08:
+            return True
+        return False
+
 
     def _get_random_object(self, num_objects):
         """
@@ -679,21 +753,22 @@ class SimulatedYCBEnv():
         else:
             return pack_pose(self.cam_offset.dot(mat_camera))
 
-    def _get_relative_ef_pose(self):
-        """
-        Get all obejct poses with respect to the end effector
-        """
-        pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
-        ef_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
-        poses = []
-        for idx, uid in enumerate(self._objectUids):
-            if self.placed_objects[idx]:
-                pos, orn = p.getBasePositionAndOrientation(uid)  # to target
-                obj_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
-                poses.append(inv_relative_pose(obj_pose, ef_pose))
-        return poses
+    # def _get_relative_ef_pose(self): 
+    #     """
+    #     Get all obejct poses with respect to the end effector
+    #     """
+    #     pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
 
-    def _get_ef_pose(self, mat=False):
+    #     ef_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
+    #     poses = []
+    #     for idx, uid in enumerate(self._objectUids):
+    #         if self.placed_objects[idx]:
+    #             pos, orn = p.getBasePositionAndOrientation(uid)  # to target
+    #             obj_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
+    #             poses.append(inv_relative_pose(obj_pose, ef_pose))
+    #     return poses
+
+    def _get_ef_pose(self, mat=False): 
         """
         end effector pose in world frame
         """
@@ -701,7 +776,7 @@ class SimulatedYCBEnv():
             return p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
         else:
             pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
-            return unpack_pose(list(pos) + [orn[3], orn[0], orn[1], orn[2]])
+            return unpack_pose(list(pos) + [orn[3], orn[0], orn[1], orn[2]]) #list to matrix
 
     def _get_target_relative_pose(self, option='base'):
         """
@@ -709,6 +784,7 @@ class SimulatedYCBEnv():
         """
         if option == 'base':
             pos, orn = p.getBasePositionAndOrientation(self._panda.pandaUid)
+            # pos, orn = p.getLinkState(self._panda.pandaUid, 7)[4:6]
         elif option == 'ef':
             pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
         elif option == 'tcp':

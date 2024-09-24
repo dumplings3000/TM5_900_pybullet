@@ -69,7 +69,7 @@ def getPathLengthObjWithCostToGo(si):
     obj = ob.PathLengthOptimizationObjective(si)
     obj.setCostToGoHeuristic(ob.CostToGoHeuristic(ob.goalRegionCostToGo))
 
-    return obj
+    return objprint(f"Position with quaternions:\n {robot_pos}\nPosition with SE(3) matrix:\n {robot_pos_mat}")
 
 
 # Keep these in alphabetical order and all lower case
@@ -83,7 +83,7 @@ def allocatePlanner(si, plannerType):
     elif plannerType.lower() == "informedrrtstar":
         return og.InformedRRTstar(si)
     elif plannerType.lower() == "prmstar":
-        return og.PRMstar(si)
+        return og.PRMstar(siprint(f"Position with quaternions:\n {robot_pos}\nPosition with SE(3) matrix:\n {robot_pos_mat}"))
     elif plannerType.lower() == "rrtstar":
         return og.RRTstar(si)
     elif plannerType.lower() == "sorrtstar":
@@ -187,3 +187,6 @@ class GraspPlanner():
         else:
             print("No solution found.")
             return None
+        
+        # def wheel_velicity_control(self, robot_pos, robot_vel, wheel_vel):
+
