@@ -85,6 +85,9 @@ class TM5:
         self._joint_min_limit = np.array([-4.712385, -3.14159, -3.14159, -3.14159, -3.14159, -4.712385, 0, 0, 0])
         self._joint_max_limit = np.array([4.712385, 3.14159, 3.14159,  3.14159,  3.14159,  4.712385, 0, 0, 0.8])
         self.gripper_range = [0, 0.085]
+        self.wheel_distance = 0.46
+        self.wheel_radius = 0.05
+        self.max_wheel_velocity = 20
 
         for j in range(self.dof):
             if j >=7:
@@ -208,7 +211,7 @@ class TM5:
         p.setJointMotorControl2(self.robot, self.mimic_parent_id, p.POSITION_CONTROL, targetPosition=open_angle,
                                 force=100)
         
-    def AMR_control(self, mode, value_l,value_r):
+    def wheel_control(self, mode, value_l,value_r):
         '''
         接收两个控制信号并执行相应的动作。
 
@@ -218,8 +221,98 @@ class TM5:
             p.setJointMotorControl2(self.pandaUid, jointIndex=2, controlMode=p.POSITION_CONTROL, targetPosition=value_l, force=10)
             
         elif mode == "velocity":
+            # print(value_l,value_r)
             p.setJointMotorControl2(self.pandaUid, jointIndex=1, controlMode=p.VELOCITY_CONTROL, targetVelocity=value_r, force=10)
             p.setJointMotorControl2(self.pandaUid, jointIndex=2, controlMode=p.VELOCITY_CONTROL, targetVelocity=value_l, force=10)
+
+    def compute_wheel_velocities(self, v, omega):
+        """
+        計算給定線速度和角速度時的車輪速度
+        :param v: 車輛的線速度 (m/s)
+        :param omega: 車輛的角速度 (rad/s)
+        :return: 左右車輪速度 (rad/s)
+        """
+        v_left = (2 * v + omega * self.wheel_distance) / (2 * self.wheel_radius)
+        v_right = (2 * v - omega * self.wheel_distance) / (2 * self.wheel_radius)
+        return v_left, v_right
+
+    def go_to_point(self, car_pos, car_angle, target_pos):
+        """
+        控制車輛前往目標點
+        :param car_pos: 當前車輛位置 (x, y)
+        :param car_angle: 當前車輛角度 (朝向)
+        :param target_pos: 目標位置 (x, y)
+        """
+        dx = target_pos[0] - car_pos[0]
+        dy = target_pos[1] - car_pos[1]
+        distance = np.sqrt(dx**2 + dy**2)
+        
+        # 計算目標方向的角度
+        target_angle = np.arctan2(dy, dx)
+        angle_diff = target_angle - car_angle
+        
+        # 限制角度差在 [-pi, pi] 之內
+        angle_diff = (angle_diff + np.pi) % (2 * np.pi) - np.pi
+        
+        # 設置車輛的速度
+        if np.abs(angle_diff) > 0.2:
+            v = 0 
+            omega = 30 * angle_diff  
+        else:
+            v = 20.0 * min(1, distance)  
+            v = max(5, v)  
+            omega = 0 * angle_diff 
+
+        v_left, v_right = self.compute_wheel_velocities(v, omega)
+        # v_left = np.clip(v_left, -max_wheel_velocity, max_wheel_velocity)
+        # v_right = np.clip(v_right, -max_wheel_velocity, max_wheel_velocity)
+        
+        return v_left, v_right
+
+    def go_to_pose(self, car_angle, target_angle):
+
+        angle_diff = target_angle - car_angle
+        
+        # 限制角度差在 [-pi, pi] 之內
+        angle_diff = (angle_diff + np.pi) % (2 * np.pi) - np.pi
+        v = 0 
+        omega = 30 * angle_diff  
+        # if np.abs(angle_diff) < 0.2:  # 當接近目標角度時減小轉向速度
+        #     omega = angle_diff * 0.1  # 減少轉向速度
+
+        v_left, v_right = self.compute_wheel_velocities(v, omega)
+        return v_left, v_right
+
+    def Mobilebase_control(self, path_points, target_angle):
+        control_mode = "velocity"
+        for target_pos in path_points:
+            target_reached = False
+            while not target_reached:
+                car_state = p.getBasePositionAndOrientation(self.pandaUid)
+                car_pos = [car_state[0][0], car_state[0][1]]
+                car_angle = p.getEulerFromQuaternion(car_state[1])[2]
+                distance_to_target = np.linalg.norm(np.array(car_pos) - np.array(target_pos))
+                angle_diff = target_angle - car_angle
+                angle_diff = (angle_diff + np.pi) % (2 * np.pi) - np.pi
+                angle_diff = abs(angle_diff)
+
+                left_wheel_value,right_wheel_value  = self.go_to_point(car_pos, car_angle, target_pos)
+
+                # # 當接近目標點時停止
+                if distance_to_target < 0.05:
+                    if target_pos == path_points[-1]:
+                        left_wheel_value,right_wheel_value = self.go_to_pose(car_angle, target_angle)
+                        if angle_diff < 0.01:
+                            left_wheel_value,right_wheel_value = 0, 0
+                            self.wheel_control(control_mode, right_wheel_value, left_wheel_value)
+                            p.stepSimulation()
+                            target_reached = True
+                            break
+                
+                # 進行一步模擬
+                self.wheel_control(control_mode, right_wheel_value, left_wheel_value)
+                p.stepSimulation()
+    
 
 if __name__ == "__main__":
     robot = TM5(realtime=1)

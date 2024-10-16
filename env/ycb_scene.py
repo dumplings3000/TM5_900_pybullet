@@ -38,7 +38,7 @@ class SimulatedYCBEnv():
                  initial_far=0.5,
                  disable_unnece_collision=False,
                  use_acronym=False):
-        self._timeStep = 1. / 1000.
+        self._timeStep = 1. / 2000.
         self._observation = []
         self._renders = renders
         self._resize_img_size = img_resize
@@ -194,8 +194,8 @@ class SimulatedYCBEnv():
     def load_shelf(self, shelf_files):
         self.shelf_ids = []
         # 0 (0, 0, 0, 1),90 (0, 0, 0.707, 0.707),180 (0, 0, 1, 0),270 (0, 0, 0.707, -0.707)
-        selected_shelf_file = random.choice(shelf_files)
-        # selected_shelf_file = shelf_files[3]
+        # selected_shelf_file = random.choice(shelf_files)
+        selected_shelf_file = shelf_files[1]
         short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
         self.shelf1_id = p.loadURDF(selected_shelf_file, [(short_length - self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
                    [0, 0, 0, 1],useFixedBase=True)
@@ -206,7 +206,7 @@ class SimulatedYCBEnv():
         self.shelf8_id = p.loadURDF(selected_shelf_file, [-(short_length + self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
                    [0, 0, 0, 1],useFixedBase=True)
         
-        selected_shelf_file = random.choice(shelf_files)
+        # selected_shelf_file = random.choice(shelf_files)
         # selected_shelf_file = shelf_files[3]
         short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
         self.shelf3_id = p.loadURDF(selected_shelf_file, [(short_length - self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
@@ -218,7 +218,7 @@ class SimulatedYCBEnv():
         self.shelf10_id = p.loadURDF(selected_shelf_file, [-(short_length + self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
                    [0, 0, 0, 1],useFixedBase=True)
         
-        selected_shelf_file = random.choice(shelf_files)
+        # selected_shelf_file = random.choice(shelf_files)
         # selected_shelf_file = shelf_files[3]
         short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
         self.shelf5_id =p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], -(short_length - self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
