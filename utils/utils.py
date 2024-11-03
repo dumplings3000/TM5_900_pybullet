@@ -487,7 +487,6 @@ def qrot(q, v):
     uuv = torch.cross(qvec, uv, dim=1)
     return (v + 2 * (q[:, :1] * uv + uuv)).view(original_shape)
 
-
 class bcolors:
     OK = '\033[92m'  # GREEN
     WARNING = '\033[93m'  # YELLOW

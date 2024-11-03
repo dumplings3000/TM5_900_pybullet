@@ -43,6 +43,26 @@ class TM5:
         # robot parameters
         self.dof = p.getNumJoints(self.robot)
 
+        print("DOF of the robot: ", self.dof)
+        for joint_index in range(self.dof):
+            joint_info = p.getJointInfo(self.pandaUid, joint_index)
+            
+            joint_name = joint_info[1].decode('utf-8')  # 關節名稱
+            joint_type = joint_info[2]                   # 關節類型
+            joint_state = p.getJointState(self.pandaUid, joint_index)  # 當前關節狀態
+            
+            position = joint_state[0]                    # 當前位置
+            velocity = joint_state[1]                    # 當前速度
+            torque = joint_state[3]                      # 當前力矩
+            
+            print(f"Joint {joint_index}:")
+            print(f"  Name: {joint_name}")
+            print(f"  Type: {joint_type}")
+            print(f"  Position: {position}")
+            print(f"  Velocity: {velocity}")
+            print(f"  Torque: {torque}")
+            print("----------------------------")
+
         # # To control the gripper
         mimic_parent_name = 'finger_joint'
         mimic_children_names = {'right_outer_knuckle_joint': 1,
@@ -222,8 +242,8 @@ class TM5:
             
         elif mode == "velocity":
             # print(value_l,value_r)
-            p.setJointMotorControl2(self.pandaUid, jointIndex=1, controlMode=p.VELOCITY_CONTROL, targetVelocity=value_r, force=10)
-            p.setJointMotorControl2(self.pandaUid, jointIndex=2, controlMode=p.VELOCITY_CONTROL, targetVelocity=value_l, force=10)
+            p.setJointMotorControl2(self.pandaUid, jointIndex=1, controlMode=p.VELOCITY_CONTROL, targetVelocity=value_r, force=20)
+            p.setJointMotorControl2(self.pandaUid, jointIndex=2, controlMode=p.VELOCITY_CONTROL, targetVelocity=value_l, force=20)
 
     def compute_wheel_velocities(self, v, omega):
         """
@@ -234,6 +254,7 @@ class TM5:
         """
         v_left = (2 * v + omega * self.wheel_distance) / (2 * self.wheel_radius)
         v_right = (2 * v - omega * self.wheel_distance) / (2 * self.wheel_radius)
+        print(v_left, v_right)
         return v_left, v_right
 
     def go_to_point(self, car_pos, car_angle, target_pos):
@@ -255,13 +276,21 @@ class TM5:
         angle_diff = (angle_diff + np.pi) % (2 * np.pi) - np.pi
         
         # 設置車輛的速度
-        if np.abs(angle_diff) > 0.2:
+        if np.abs(angle_diff) > 0.1:
             v = 0 
             omega = 30 * angle_diff  
+            if omega > 0:
+                omega = max(omega, 10)
+            else:
+                omega = min(omega, -10)
         else:
-            v = 20.0 * min(1, distance)  
-            v = max(5, v)  
-            omega = 0 * angle_diff 
+            if distance < 0.5:
+                v = 1
+                omega = 0
+            else:
+                v = 5.0 * min(10, distance)  
+                v = max(v, 3)
+                omega = 0 
 
         v_left, v_right = self.compute_wheel_velocities(v, omega)
         # v_left = np.clip(v_left, -max_wheel_velocity, max_wheel_velocity)
@@ -276,18 +305,22 @@ class TM5:
         # 限制角度差在 [-pi, pi] 之內
         angle_diff = (angle_diff + np.pi) % (2 * np.pi) - np.pi
         v = 0 
-        omega = 30 * angle_diff  
-        # if np.abs(angle_diff) < 0.2:  # 當接近目標角度時減小轉向速度
-        #     omega = angle_diff * 0.1  # 減少轉向速度
+        omega = 20 * angle_diff  
+        if np.abs(angle_diff) < 0.2:  # 當接近目標角度時減小轉向速度
+            omega = angle_diff * 5  # 減少轉向速度
 
         v_left, v_right = self.compute_wheel_velocities(v, omega)
         return v_left, v_right
 
-    def Mobilebase_control(self, path_points, target_angle):
+    def Mobilebase_control(self, path_points):
         control_mode = "velocity"
-        for target_pos in path_points:
+        print(path_points)
+        for target_pose in path_points:
             target_reached = False
+            target_angle = target_pose[2]
+            target_pos = [target_pose[0], target_pose[1]]
             while not target_reached:
+                print("do :", target_pose)
                 car_state = p.getBasePositionAndOrientation(self.pandaUid)
                 car_pos = [car_state[0][0], car_state[0][1]]
                 car_angle = p.getEulerFromQuaternion(car_state[1])[2]
@@ -298,9 +331,10 @@ class TM5:
 
                 left_wheel_value,right_wheel_value  = self.go_to_point(car_pos, car_angle, target_pos)
 
-                # # 當接近目標點時停止
-                if distance_to_target < 0.05:
-                    if target_pos == path_points[-1]:
+                # 當接近目標點時停止
+                if target_pose == path_points[-1]:
+                    if distance_to_target < 0.07:
+                        print("distance_to_target:", distance_to_target)
                         left_wheel_value,right_wheel_value = self.go_to_pose(car_angle, target_angle)
                         if angle_diff < 0.01:
                             left_wheel_value,right_wheel_value = 0, 0
@@ -308,12 +342,15 @@ class TM5:
                             p.stepSimulation()
                             target_reached = True
                             break
-                
+                else:
+                    if distance_to_target < 0.2:
+                        print("distance_to_target:", distance_to_target)
+                        target_reached = True
+
                 # 進行一步模擬
                 self.wheel_control(control_mode, right_wheel_value, left_wheel_value)
                 p.stepSimulation()
     
-
 if __name__ == "__main__":
     robot = TM5(realtime=1)
     while True:

@@ -48,7 +48,7 @@ class ValidGraspChecker():
             p.setCollisionFilterGroupMask(self.robot, i, 0, 0)
             p.setCollisionFilterPair(0, self.robot, -1, i, 1)
 
-        p.resetBasePositionAndOrientation(self.robot, [0, 0, 0],
+        p.resetBasePositionAndOrientation(self.robot, [0.75, 0, 0],
                                           [0.000000, 0.000000, 0.000000, 1.000000])
 
     def extract_grasp(self, grasp, drawback_distance=0., visual=False, filter_elbow=True):
@@ -98,6 +98,6 @@ class ValidGraspChecker():
                 valid_grasp.append(f_pose)
                 valid_grasp_index.append(i)
 
-        p.resetBasePositionAndOrientation(self.robot, [0, 0, 0], [0, 0, 0, 1])
+        p.resetBasePositionAndOrientation(self.robot, [0.75, 0, 0], [0, 0, 0, 1])
 
         return np.array(valid_grasp), np.array(valid_grasp_index)

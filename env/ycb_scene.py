@@ -62,6 +62,8 @@ class SimulatedYCBEnv():
         self.observation_dim = (self._window_width, self._window_height, 3)
         self._use_acronym = use_acronym
 
+        self.shelf_num = 8
+
         self.init_constant()
         self.connect()
 
@@ -130,13 +132,20 @@ class SimulatedYCBEnv():
         p.stepSimulation()
 
         # Set table and plane
+        # plane
         plane_file = os.path.join(self.root_dir,  'data/objects/floor/model_normalized.urdf')  # _white
+        self.plane_id = p.loadURDF(plane_file, [0 - self._shift[0], 0 - self._shift[1], 0 - self._shift[2]], useFixedBase=True)
+        # table
         table_file = os.path.join(self.root_dir,  'data/objects/table/models/model_normalized.urdf')
-        self.plane_id = p.loadURDF(plane_file, [0 - self._shift[0], 0 - self._shift[1], 0 - self._shift[2]])
-        self.table_pos = np.array([0.9 - self._shift[0], 0.0 - self._shift[1], 0.05 - self._shift[2]])
-        self.table_id = p.loadURDF(table_file, self.table_pos[0], self.table_pos[1], self.table_pos[2],
-                                   0.707, 0., 0., 0.707)
-                                   
+        self.table_pos = np.array([0.75 - self._shift[0], 0.0 - self._shift[1], 0.05 - self._shift[2]])
+        self.table_id = p.loadURDF(table_file, [self.table_pos[0], self.table_pos[1], self.table_pos[2]],
+                                   [0.707, 0., 0., 0.707], useFixedBase=True)
+        object_bbox = p.getAABB(self.table_id)
+        self.length_weight = (object_bbox[1][0] - object_bbox[0][0]) / 2
+        self.width_weight = (object_bbox[1][1] - object_bbox[0][1]) / 2
+        self.height_weight = (object_bbox[1][2] - object_bbox[0][2]) / 2
+        self.table_radius = min(self.length_weight, self.width_weight)  # 或者使用合适的半径值
+
         # Set the camera  .
         look = [0.9 - self._shift[0], 0.0 - self._shift[1], 0 - self._shift[2]]
         distance = 2.5
@@ -150,24 +159,11 @@ class SimulatedYCBEnv():
         self._view_matrix = p.computeViewMatrixFromYawPitchRoll(look, distance, yaw, pitch, roll, 2)
         self._proj_matrix = p.computeProjectionMatrixFOV(fov, aspect, self.near, self.far)
                                    
-        object_bbox = p.getAABB(self.table_id)
-        self.length_weight = (object_bbox[1][0] - object_bbox[0][0]) / 2
-        self.width_weight = (object_bbox[1][1] - object_bbox[0][1]) / 2
-        self.height_weight = (object_bbox[1][2] - object_bbox[0][2]) / 2
-        self.table_radius = min(self.length_weight, self.width_weight)  # 或者使用合适的半径值
-
         # Load shelf
-        shelf_file = os.path.join(self.root_dir,  'data/objects/shelf/model.urdf')
-        shelf_2_file = os.path.join(self.root_dir,  'data/objects/shelf_2/model.urdf')
-        shelf_3_file = os.path.join(self.root_dir,  'data/objects/shelf_3/model.urdf')
-        shelf_4_file = os.path.join(self.root_dir,  'data/objects/shelf_4/model.urdf')       
-        shelf_files = [shelf_file, shelf_2_file, shelf_3_file, shelf_4_file]
+        shelf_file = os.path.join(self.root_dir,  'data/objects/shelf/model.urdf')  
+        shelf_files = [shelf_file]
         self.load_shelf(shelf_files)
-
-        self.obj_path = [plane_file, table_file, self.shelf1_id, self.shelf2_id, self.shelf3_id, 
-                         self.shelf4_id, self.shelf5_id, self.shelf6_id, self.shelf7_id, self.shelf8_id,
-                         self.shelf9_id, self.shelf10_id,self.shelf11_id, self.shelf12_id]
-
+        
         # Intialize robot and objects
         if init_joints is None:
             self._panda = TM5(stepsize=self._timeStep, base_shift=self._shift)
@@ -182,80 +178,47 @@ class SimulatedYCBEnv():
         if not self.objects_loaded:
             self._objectUids = self.cache_objects()
 
-        self._randomly_place_objects_pack(self._get_random_object(num_object), scale=1, if_stack=if_stack)
-
-        self._objectUids += [self.plane_id, self.table_id]
         self.collided = False
         self.collided_before = False
-        self.obj_names, self.obj_poses = self.get_env_info()
-        self.init_target_height = self._get_target_relative_pose()[2, 3]
         return None  # observation
 
     def load_shelf(self, shelf_files):
-        self.shelf_ids = []
+        self.shelf_ids = [None] * self.shelf_num
         # 0 (0, 0, 0, 1),90 (0, 0, 0.707, 0.707),180 (0, 0, 1, 0),270 (0, 0, 0.707, -0.707)
         # selected_shelf_file = random.choice(shelf_files)
-        selected_shelf_file = shelf_files[1]
-        short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
-        self.shelf1_id = p.loadURDF(selected_shelf_file, [(short_length - self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 0, 1],useFixedBase=True)
-        self.shelf2_id = p.loadURDF(selected_shelf_file, [-(short_length - self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 1, 0],useFixedBase=True)
-        self.shelf7_id = p.loadURDF(selected_shelf_file, [(short_length + self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 1, 0],useFixedBase=True)
-        self.shelf8_id = p.loadURDF(selected_shelf_file, [-(short_length + self.shift_shelf) - self._shift[0], -long_length - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 0, 1],useFixedBase=True)
-        
-        # selected_shelf_file = random.choice(shelf_files)
-        # selected_shelf_file = shelf_files[3]
-        short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
-        self.shelf3_id = p.loadURDF(selected_shelf_file, [(short_length - self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 0, 1],useFixedBase=True)
-        self.shelf4_id = p.loadURDF(selected_shelf_file, [-(short_length - self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 1, 0],useFixedBase=True)
-        self.shelf9_id = p.loadURDF(selected_shelf_file, [(short_length + self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 1, 0],useFixedBase=True)
-        self.shelf10_id = p.loadURDF(selected_shelf_file, [-(short_length + self.shift_shelf) - self._shift[0], long_length - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 0, 1],useFixedBase=True)
-        
-        # selected_shelf_file = random.choice(shelf_files)
-        # selected_shelf_file = shelf_files[3]
-        short_length, long_length = self.check_which_shelf(shelf_files, selected_shelf_file)
-        self.shelf5_id =p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], -(short_length - self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 0.707, -0.707],useFixedBase=True)
-        self.shelf6_id =p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], (short_length - self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 0.707, 0.707],useFixedBase=True)
-        self.shelf11_id = p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], -(short_length + self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 0.707, 0.707],useFixedBase=True)
-        self.shelf12_id = p.loadURDF(selected_shelf_file, [-long_length - self._shift[0], (short_length + self.shift_shelf) - self._shift[1], 0 - self._shift[2]], 
-                   [0, 0, 0.707, -0.707],useFixedBase=True)
+        selected_shelf_file = shelf_files[0]
+        shelf_num = int(self.shelf_num/4)
+        x, y ,x_shift, y_shift = self.check_which_shelf(shelf_files, selected_shelf_file)
+        for i in range(shelf_num):
+            self.shelf_ids[i*4] = p.loadURDF(selected_shelf_file, [(i * x + x_shift) - self._shift[0], -(2 + y_shift) - self._shift[1], 0 - self._shift[2]], 
+                    [0, 0, 0, 1], useFixedBase=True)
+            self.shelf_ids[i*4 +1] = p.loadURDF(selected_shelf_file, [-(i * x + x_shift) - self._shift[0], -(2 + y_shift) - self._shift[1], 0 - self._shift[2]], 
+                    [0, 0, 0, 1], useFixedBase=True)
+            self.shelf_ids[i*4 +2] = p.loadURDF(selected_shelf_file, [((i+1) * x - x_shift) - self._shift[0], -(2 + y_shift) - self._shift[1], 0 - self._shift[2]], 
+                    [0, 0, 0, 1], useFixedBase=True)
+            self.shelf_ids[i*4 +3] = p.loadURDF(selected_shelf_file, [-((i+1) * x - x_shift) - self._shift[0], -(2 + y_shift) - self._shift[1], 0 - self._shift[2]], 
+                    [0, 0, 0, 1], useFixedBase=True)
 
     def check_which_shelf(self, shelf_set, shelf_id):
         if shelf_id == shelf_set[0]:
-            self.shift_shelf = 0.21
-            short_length = 1.2
-            long_length = 3.5
-        elif shelf_id == shelf_set[1]:
-            self.shift_shelf = 0.022
-            short_length = 1.5
-            long_length = 3.5
-        elif shelf_id == shelf_set[2]:
-            self.shift_shelf = 0.21
-            short_length = 1.2
-            long_length = 3.5
-        elif shelf_id == shelf_set[3]:
-            self.shift_shelf = 0.23
-            short_length = 1.2
-            long_length = 3.5
-        return short_length, long_length
+            x = 2
+            y = 2.7
+            x_shift = 0.2
+            y_shift = 1.35
+        return x, y, x_shift, y_shift
+    
+
+
 
     def cache_reset(self, init_joints, enforce_face_target, num_object=1, if_stack=True):
         """
         Hack to move the loaded objects around to avoid loading multiple times
         """
+        for idx in self._objectUids:
+            if idx is not None:
+                p.removeBody(idx)
 
         self._panda.reset(init_joints)
-        self.place_back_objects()
         self._randomly_place_objects_pack(self._get_random_object(num_object), scale=1, if_stack=if_stack)
 
         self.retracted = False
@@ -269,57 +232,36 @@ class SimulatedYCBEnv():
     
     def cache_objects(self):
         """
-        Load all YCB objects and set up
+        get all object urdf files , if placed , heights and scales list
         """
+        self.object_heights = []
+        self.object_scales = []
 
         obj_path = os.path.join(self.root_dir, 'data/objects/')
         objects = self.obj_indexes
         print("self.obj_indexes:", self.obj_indexes)
         obj_path = [obj_path + objects[i] for i in self._all_obj]
-
-        self.target_obj_indexes = [self._all_obj.index(idx) for idx in self._target_objs]
-        pose = np.zeros([len(obj_path), 3])
-        pose[:, 0] = -8 
-        pose[:, 1] = -8 - np.linspace(0, 8, len(obj_path))
-        pose[:, 2] = 0.2
-        pos, orn = p.getBasePositionAndOrientation(self._panda.pandaUid)
         objects_paths = [p_.strip() + '/' for p_ in obj_path]
-        objectUids = []
-        self.object_heights = []
-        self.obj_path = objects_paths + self.obj_path
-        self.placed_object_poses = []
-        self.object_scale = []
 
         for i, name in enumerate(objects_paths):
             mesh_scale = name.split('_')[-1][:-1]
+            self.object_scales.append(float(mesh_scale))
             name = name.replace(f"_{mesh_scale}/", "/")
-            self.object_scale.append(float(mesh_scale))
-            trans = pose[i] + np.array(pos)  # fixed position
-            self.placed_object_poses.append((trans.copy(), np.array(orn).copy()))
-            uid = self._add_mesh(os.path.join(self.root_dir, name, 'model_normalized.urdf'), trans, orn, scale=float(mesh_scale))  # xyzw
-
-            if self._change_dynamics:
-                p.changeDynamics(uid, -1, lateralFriction=0.15, spinningFriction=0.1, rollingFriction=0.1)
-
             point_z = np.loadtxt(os.path.join(self.root_dir, name, 'model_normalized.extent.txt'))
             half_height = float(point_z.max()) / 2 if len(point_z) > 0 else 0.01
             self.object_heights.append(half_height)
-            objectUids.append(uid)
-            p.setCollisionFilterPair(uid, self.plane_id, -1, -1, 1)
+            objects_paths[i] = objects_paths[i].replace(f"_{mesh_scale}/", "/")
+        self.obj_path = objects_paths
+        print("self.obj_path:", self.obj_path)
 
-            if self._disable_unnece_collision:
-                for other_uid in objectUids:
-                    p.setCollisionFilterPair(uid, other_uid, -1, -1, 0)
+        for i, name in enumerate(self.obj_indexes):
+            mesh_scale = name.split('_')[-1]
+            self.obj_indexes[i] = self.obj_indexes[i].replace(f"_{mesh_scale}", "")
+
         self.objects_loaded = True
         self.placed_objects = [False] * len(self.obj_path)
-        return objectUids
 
-
-    def place_back_objects(self):
-        for idx, obj in enumerate(self._objectUids):
-            if self.placed_objects[idx]:
-                p.resetBasePositionAndOrientation(obj, self.placed_object_poses[idx][0], self.placed_object_poses[idx][1])
-            self.placed_objects[idx] = False
+        return [None] * len(self.obj_path)
 
     def _randomly_place_objects_pack(self, urdfList, scale, if_stack=True, poses=None):
         '''
@@ -339,105 +281,8 @@ class SimulatedYCBEnv():
         if len(urdfList) == 1:
             return self._randomly_place_objects(urdfList=urdfList, scale=scale, poses=poses)
         else:
-            # print("the length of urdfList:", len(urdfList))
-            if if_stack:
-                self.place_back_objects()
-                for i in range(len(urdfList)):
-                    if i == 0:
-                        xpos = 0.5 - self._shift[0]
-                        ypos = -self._shift[0]
-                    else:
-                        spare = False
-                        while not spare:
-                            spare = True
-                            xpos = 0.5 + 0.28 * (random.random() - 0.5) - self._shift[0]
-                            ypos = 0.9 * self._blockRandom * (random.random() - 0.5) - self._shift[0]
-                            for idx in range(len(self.placed_objects)):
-                                if self.placed_objects[idx]:
-                                    pos, _ = p.getBasePositionAndOrientation(self._objectUids[idx])
-                                    if (xpos-pos[0])**2+(ypos-pos[1])**2 < 0.0165:
-                                        spare = False
-                    obj_path = '/'.join(urdfList[i].split('/')[:-1]) + '/'
-                    self.target_idx = self.obj_path.index(os.path.join(self.root_dir, obj_path))
-                    self.placed_objects[self.target_idx] = True
-                    self.target_name = urdfList[i].split('/')[-2]
-                    x_rot = 0
-                    if self._use_acronym:
-                        object_bbox = p.getAABB(self._objectUids[self.target_idx])
-                        height_weight = (object_bbox[1][2] - object_bbox[0][2]) / 2
-                        z_init = -.60 + 2.5 * height_weight
-                    else:
-                        height_weight = self.object_heights[self.target_idx]
-                        z_init = -.65 + 1.95 * height_weight
-                    orn = p.getQuaternionFromEuler([x_rot, 0, np.random.uniform(-np.pi, np.pi)])
-                    p.resetBasePositionAndOrientation(self._objectUids[self.target_idx],
-                                                      [xpos, ypos,  z_init - self._shift[2]],
-                                                      [orn[0], orn[1], orn[2], orn[3]])
-                    p.resetBaseVelocity(
-                        self._objectUids[self.target_idx], (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
-                    )
-                    for _ in range(400):
-                        p.stepSimulation()
-                    print('>>>> target name: {}'.format(self.target_name))
-                    pos, new_orn = p.getBasePositionAndOrientation(self._objectUids[self.target_idx])  # to target
-                    ang = np.arccos(2 * np.power(np.dot(tf_quat(orn), tf_quat(new_orn)), 2) - 1) * 180.0 / np.pi
-
-                    if (self.target_name in self._filter_objects or ang > 50) and not self._use_acronym:  # self.target_name.startswith('0') and
-                        self.target_name = 'noexists'
-                        self.stack_success = False
-
-                for _ in range(2000):
-                    p.stepSimulation()
-            else:
-                self.place_back_objects()
-                wall_file = os.path.join(self.root_dir,  'data/objects/box_box000/model_normalized.urdf')
-                wall_file2 = os.path.join(self.root_dir,  'data/objects/box_box001/model_normalized.urdf')
-                self.wall = []
-                for i in range(4):
-                    if i % 2 == 0:
-                        orn = p.getQuaternionFromEuler([0, 0, 0])
-                    else:
-                        orn = p.getQuaternionFromEuler([0, 0, 1.57])
-                    x_offset = 0.26 * math.cos(i*1.57)
-                    y_offset = 0.26 * math.sin(i*1.57)
-                    self.wall.append(p.loadURDF(wall_file, self.table_pos[0] + x_offset, self.table_pos[1] + y_offset,
-                                     self.table_pos[2] + 0.3,
-                                     orn[0], orn[1], orn[2], orn[3]))
-                for i in range(4):
-                    x_offset = 0.26 * math.cos(i*1.57 + 0.785)
-                    y_offset = 0.26 * math.sin(i*1.57 + 0.785)
-                    self.wall.append(p.loadURDF(wall_file2, self.table_pos[0] + x_offset, self.table_pos[1] + y_offset,
-                                     self.table_pos[2] + 0.33,
-                                     orn[0], orn[1], orn[2], orn[3]))
-                for i in range(8):
-                    p.changeDynamics(self.wall[i], linkIndex=-1, mass=0)
-
-                for i in range(len(urdfList)):
-                    xpos = 0.5 - self._shift[0] + 0.17 * (random.random() - 0.5)
-                    ypos = -self._shift[0] + 0.23 * (random.random() - 0.5)
-                    obj_path = '/'.join(urdfList[i].split('/')[:-1]) + '/'
-                    self.target_idx = self.obj_path.index(os.path.join(self.root_dir, obj_path))
-                    self.placed_objects[self.target_idx] = True
-                    self.target_name = urdfList[i].split('/')[-2]
-                    x_rot = 0
-                    z_init = -.26 + 2 * self.object_heights[self.target_idx]
-                    orn = p.getQuaternionFromEuler([x_rot, 0, np.random.uniform(-np.pi, np.pi)])
-                    p.resetBasePositionAndOrientation(self._objectUids[self.target_idx],
-                                                      [xpos, ypos,  z_init - self._shift[2]],
-                                                      [orn[0], orn[1], orn[2], orn[3]])
-                    p.resetBaseVelocity(
-                        self._objectUids[self.target_idx], (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
-                    )
-                    for _ in range(350):
-                        p.stepSimulation()
-                    print('>>>> target name: {}'.format(self.target_name))
-
-                for i in range(8):
-                    p.removeBody(self.wall[i])
-
-                for _ in range(2000):
-                    p.stepSimulation()
-
+            print("the length of urdfList:", len(urdfList))
+            
     def _randomly_place_objects(self, urdfList, scale, poses=None):
         """
         Randomize positions of each object urdf.
@@ -446,58 +291,108 @@ class SimulatedYCBEnv():
         # xpos = self.table_pos[0] + length_weight * 2 * (self._blockRandom * random.random() - 0.5) - self._shift[0]
         # ypos = self.table_pos[1] + width_weight * 2* (self._blockRandom * random.random() - 0.5) - self._shift[0]
         # for circle
+        obj_path = '/'.join(urdfList[0].split('/')[:-1]) + '/'
+        self.target_idx = self.obj_path.index(os.path.join(self.root_dir, obj_path)) 
+        self.placed_objects[self.target_idx] = True
+        self.target_name = urdfList[0].split('/')[-2]
+
         angle = random.uniform(0, 2 * math.pi)
-        radius = random.uniform(0, self.table_radius)     
+        radius = 0.5 * random.uniform(0, self.table_radius)     
 
         xpos = self.table_pos[0] + 0.8 * radius * math.cos(angle) - self._shift[0]
         ypos = self.table_pos[1] + 0.8 * radius * math.sin(angle) - self._shift[0]
-        obj_path = '/'.join(urdfList[0].split('/')[:-1]) + '/'
+        height_weight = self.object_heights[self.target_idx]
+        z_init = 0.4 + 1 * height_weight
+        orn = p.getQuaternionFromEuler([0, 0, np.random.uniform(-np.pi, np.pi)])
+        mesh_scale = self.object_scales[self.target_idx]
 
-        self.target_idx = self.obj_path.index(os.path.join(self.root_dir, obj_path))
-        self.placed_objects[self.target_idx] = True
-        self.target_name = urdfList[0].split('/')[-2]
-        x_rot = 0
+        uid = self._add_mesh(os.path.join(self.root_dir, obj_path, 'model_normalized.urdf'),
+                            [xpos, ypos,  z_init - self._shift[2]], 
+                            [orn[0], orn[1], orn[2], orn[3]], 
+                            scale=float(mesh_scale))
+        self._objectUids[self.target_idx] = uid
+
         if self._use_acronym:
-            object_bbox = p.getAABB(self._objectUids[self.target_idx])
+            object_bbox = p.getAABB(uid)
             height_weight = (object_bbox[1][2] - object_bbox[0][2]) / 2
             z_init = 0.4 + 1 * height_weight
-        else:
-            height_weight = self.object_heights[self.target_idx]
-            z_init = 0.4 + 1 * height_weight
-        orn = p.getQuaternionFromEuler([x_rot, 0, np.random.uniform(-np.pi, np.pi)])
-        p.resetBasePositionAndOrientation(self._objectUids[self.target_idx],
-                                          [xpos, ypos,  z_init - self._shift[2]], [orn[0], orn[1], orn[2], orn[3]])
-        p.resetBaseVelocity(
-            self._objectUids[self.target_idx], (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
-        )
+            p.resetBasePositionAndOrientation(uid, [xpos, ypos,  z_init - self._shift[2]], [orn[0], orn[1], orn[2], orn[3]])
+
+        p.resetBaseVelocity(uid, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
         for _ in range(2000):
             p.stepSimulation()
 
-        pos, new_orn = p.getBasePositionAndOrientation(self._objectUids[self.target_idx])  # to target
+        pos, new_orn = p.getBasePositionAndOrientation(uid)  # to target
         ang = np.arccos(2 * np.power(np.dot(tf_quat(orn), tf_quat(new_orn)), 2) - 1) * 180.0 / np.pi
-        print('>>>> target name: {}'.format(self.target_name))
 
         if (self.target_name in self._filter_objects or ang > 50) and not self._use_acronym:  # self.target_name.startswith('0') and
             self.target_name = 'noexists'
+        print('>>>> target name: {}'.format(self.target_name))
         return []
+    
+    def _add_mesh(self, obj_file, trans, quat, scale=1):
+        """
+        Add a mesh with URDF file.
+        """
+        bid = p.loadURDF(obj_file, trans, quat, globalScaling=scale, flags=p.URDF_ENABLE_CACHED_GRAPHICS_SHAPES)
+        return bid
 
-    def step(self, action, cmd_vel ,delta=False, obs=True, repeat=150, config=False, vis=False):
+    def _get_random_object(self, num_objects):
+        """
+        Randomly choose an object urdf from the selected objects
+        """
+        target_obj = np.random.choice(np.arange(0, len(self.obj_indexes)), size=num_objects, replace=False)
+        selected_objects = target_obj           
+        selected_objects_filenames = [os.path.join('data/objects/', self.obj_indexes[int(selected_objects[i])],
+                                      'model_normalized.urdf') for i in range(num_objects)]
+        print('selected objects:', selected_objects_filenames)
+        return selected_objects_filenames
+    
+    def get_env_info(self, scene_file=None):
+        """
+        Return object names and poses of the current scene
+        """
+        pos, orn = p.getBasePositionAndOrientation(self._panda.pandaUid)
+        base_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
+        poses = []
+        obj_dir = []
+
+        for idx, uid in enumerate(self._objectUids):
+            if self.placed_objects[idx]:
+                pos, orn = p.getBasePositionAndOrientation(uid)  # center offset of base
+                obj_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
+                poses.append(inv_relative_pose(obj_pose, base_pose))
+                obj_dir.append('/'.join(self.obj_path[idx].split('/')[:-1]).strip())  # .encode("utf-8")
+
+        return obj_dir, poses
+
+    def enforce_face_target(self):
+        """
+        Move the gripper to face the target
+        """
+        target_forward = self._get_target_relative_pose('ef')[:3, 3]
+        target_forward = target_forward / np.linalg.norm(target_forward)
+        r = a2e(target_forward)
+        action = np.hstack([np.zeros(3), r])
+        return self.step(action, repeat=200, vis=False)[0]
+    
+    def step(self, action ,delta=False, obs=True, repeat=150, config=False, vis=False):
         """
         Environment step.
         """
         action = self.process_action(action, delta, config)
+        if not config:
+            action[6] = 0.85
         self._panda.setTargetPositions(action)
-        self._panda.AMR_control(control_type='velocity', lcmd_vel=cmd_vel[0], rcmd_vel=cmd_vel[1])
         for _ in range(int(repeat)):
             p.stepSimulation()
             if self._renders:
                 time.sleep(self._timeStep)
 
         observation = self._get_observation(vis=vis)
+        joint = p.getJointStates(self._panda.pandaUid, self._panda.joints)
 
-        reward = self.target_lifted()
-
-        return observation, reward, self._get_ef_pose(mat=True)
+        return observation, joint, self._get_ef_pose(mat=True)
 
     def _get_observation(self, pose=None, vis=False, raw_data=False):
         """
@@ -548,47 +443,6 @@ class SimulatedYCBEnv():
         pose_info = (object_pose, ef_pose)
         return [obs, joint_pos, camera_info, pose_info]
 
-    def retract(self):
-        """
-        Move the arm to lift the object.
-        """
-
-        cur_joint = np.array(self._panda.getJointStates()[0])
-        cur_joint[-1] = 0.8  # close finger
-        observations = [self.step(cur_joint, repeat=300, config=True, vis=False)[0]]
-        pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
-
-        for i in range(10):
-            pos = (pos[0], pos[1], pos[2] + 0.03)
-            jointPoses = np.array(p.calculateInverseKinematics(self._panda.pandaUid,
-                                                               self._panda.pandaEndEffectorIndex, pos,
-                                                               maxNumIterations=500,
-                                                               residualThreshold=1e-8))
-            jointPoses[12] = 0.8
-            jointPoses = jointPoses[6:13].copy()
-            obs = self.step(jointPoses, config=True)[0]
-
-        self.retracted = True
-        rew = self._reward()
-        return rew
-
-    def _reward(self):
-        """
-        Calculates the reward for the episode.
-        """
-        reward = 0
-
-        if self.retracted and self.target_lifted():
-            print('target {} lifted !'.format(self.target_name))
-            reward = 1
-        return reward
-
-    def _add_mesh(self, obj_file, trans, quat, scale=1):
-        """
-        Add a mesh with URDF file.
-        """
-        bid = p.loadURDF(obj_file, trans, quat, globalScaling=scale, flags=p.URDF_ENABLE_CACHED_GRAPHICS_SHAPES)
-        return bid
 
     def reset_joint(self, init_joints):
         if init_joints is not None:
@@ -597,6 +451,7 @@ class SimulatedYCBEnv():
     def process_action(self, action, delta=False, config=False):
         """
         Process different action types
+        para action: relative action to be processed
         """
         # transform to local coordinate
         if config:
@@ -657,60 +512,12 @@ class SimulatedYCBEnv():
             return True
         return False
 
-
-    def _get_random_object(self, num_objects):
-        """
-        Randomly choose an object urdf from the selected objects
-        """
-        target_obj = np.random.choice(np.arange(0, len(self.obj_indexes)), size=num_objects, replace=False)
-        selected_objects = target_obj
-        selected_objects_filenames = [os.path.join('data/objects/', self.obj_indexes[int(selected_objects[i])],
-                                      'model_normalized.urdf') for i in range(num_objects)]
-        return selected_objects_filenames
-
     def _load_index_objs(self, file_dir):
 
         self._target_objs = range(len(file_dir))
         self._all_obj = range(len(file_dir))
         self.obj_indexes = file_dir
 
-    def enforce_face_target(self):
-        """
-        Move the gripper to face the target
-        """
-        target_forward = self._get_target_relative_pose('ef')[:3, 3]
-        target_forward = target_forward / np.linalg.norm(target_forward)
-        r = a2e(target_forward)
-        action = np.hstack([np.zeros(3), r])
-        return self.step(action, repeat=200, vis=False)[0]
-
-    def random_perturb(self):
-        """
-        Random perturb
-        """
-        t = np.random.uniform(-0.04, 0.04, size=(3,))
-        r = np.random.uniform(-0.2, 0.2, size=(3,))
-        action = np.hstack([t, r])
-        return self.step(action, repeat=150, vis=False)[0]
-
-    def get_env_info(self, scene_file=None):
-        """
-        Return object names and poses of the current scene
-        """
-
-        pos, orn = p.getBasePositionAndOrientation(self._panda.pandaUid)
-        base_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
-        poses = []
-        obj_dir = []
-
-        for idx, uid in enumerate(self._objectUids):
-            if self.placed_objects[idx] or idx >= len(self._objectUids) - 2:
-                pos, orn = p.getBasePositionAndOrientation(uid)  # center offset of base
-                obj_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
-                poses.append(inv_relative_pose(obj_pose, base_pose))
-                obj_dir.append('/'.join(self.obj_path[idx].split('/')[:-1]).strip())  # .encode("utf-8")
-
-        return obj_dir, poses
 
     def process_image(self, color, depth, mask, size=None, if_raw=False):
         """
@@ -753,21 +560,6 @@ class SimulatedYCBEnv():
         else:
             return pack_pose(self.cam_offset.dot(mat_camera))
 
-    # def _get_relative_ef_pose(self): 
-    #     """
-    #     Get all obejct poses with respect to the end effector
-    #     """
-    #     pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
-
-    #     ef_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
-    #     poses = []
-    #     for idx, uid in enumerate(self._objectUids):
-    #         if self.placed_objects[idx]:
-    #             pos, orn = p.getBasePositionAndOrientation(uid)  # to target
-    #             obj_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
-    #             poses.append(inv_relative_pose(obj_pose, ef_pose))
-    #     return poses
-
     def _get_ef_pose(self, mat=False): 
         """
         end effector pose in world frame
@@ -782,9 +574,11 @@ class SimulatedYCBEnv():
         """
         Get target obejct poses with respect to the different frame.
         """
-        if option == 'base':
+        if option == 'world':
             pos, orn = p.getBasePositionAndOrientation(self._panda.pandaUid)
             # pos, orn = p.getLinkState(self._panda.pandaUid, 7)[4:6]
+        elif option == 'base':
+            pos, orn = p.getLinkState(self._panda.pandaUid, 7)[4:6]
         elif option == 'ef':
             pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
         elif option == 'tcp':
@@ -797,8 +591,35 @@ class SimulatedYCBEnv():
         uid = self._objectUids[self.target_idx]
         pos, orn = p.getBasePositionAndOrientation(uid)  # to target
         obj_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
+        # poses = []
+        # for idx, uid in enumerate(self._objectUids):
+        #     if self.placed_objects[idx]:
+        #         pos, orn = p.getBasePositionAndOrientation(uid)  # to target
+        #         obj_pose = list(pos) + [orn[3], orn[0], orn[1], orn[2]]
+        #         poses.append(inv_relative_pose(obj_pose, pose))
         return inv_relative_pose(obj_pose, pose)
+    
+    def retract(self):
+        """
+        Move the arm to lift the object.
+        """
 
+        cur_joint = np.array(self._panda.getJointStates()[0])
+        cur_joint[-1] = 0  # close finger
+        observations = [self.step(cur_joint, repeat=300, config=True, vis=False)[0]]
+        pos, orn = p.getLinkState(self._panda.pandaUid, self._panda.pandaEndEffectorIndex)[4:6]
+
+        for i in range(10):
+            pos = (pos[0], pos[1], pos[2] + 0.03)
+            jointPoses = np.array(p.calculateInverseKinematics(self._panda.pandaUid,
+                                                               self._panda.pandaEndEffectorIndex, pos,
+                                                               maxNumIterations=500,
+                                                               residualThreshold=1e-8))
+            jointPoses[12] = 0.9
+            jointPoses = jointPoses[6:13].copy()
+            obs = self.step(jointPoses, config=True)[0]
+
+        self.retracted = True
 
 if __name__ == '__main__':
     pass
