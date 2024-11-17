@@ -131,21 +131,10 @@ class SimulatedYCBEnv():
         p.setGravity(0, 0, -9.81)
         p.stepSimulation()
 
-        # Set table and plane
-        # plane
+        # Set plane
         plane_file = os.path.join(self.root_dir,  'data/objects/floor/model_normalized.urdf')  # _white
         self.plane_id = p.loadURDF(plane_file, [0 - self._shift[0], 0 - self._shift[1], 0 - self._shift[2]], useFixedBase=True)
-        # table
-        table_file = os.path.join(self.root_dir,  'data/objects/table/models/model_normalized.urdf')
-        self.table_pos = np.array([0.75 - self._shift[0], 0.0 - self._shift[1], 0.05 - self._shift[2]])
-        self.table_id = p.loadURDF(table_file, [self.table_pos[0], self.table_pos[1], self.table_pos[2]],
-                                   [0.707, 0., 0., 0.707], useFixedBase=True)
-        object_bbox = p.getAABB(self.table_id)
-        self.length_weight = (object_bbox[1][0] - object_bbox[0][0]) / 2
-        self.width_weight = (object_bbox[1][1] - object_bbox[0][1]) / 2
-        self.height_weight = (object_bbox[1][2] - object_bbox[0][2]) / 2
-        self.table_radius = min(self.length_weight, self.width_weight)  # 或者使用合适的半径值
-
+        
         # Set the camera  .
         look = [0.9 - self._shift[0], 0.0 - self._shift[1], 0 - self._shift[2]]
         distance = 2.5
@@ -207,9 +196,6 @@ class SimulatedYCBEnv():
             y_shift = 1.35
         return x, y, x_shift, y_shift
     
-
-
-
     def cache_reset(self, init_joints, enforce_face_target, num_object=1, if_stack=True):
         """
         Hack to move the loaded objects around to avoid loading multiple times
@@ -287,23 +273,27 @@ class SimulatedYCBEnv():
         """
         Randomize positions of each object urdf.
         """
-        # for plane
-        # xpos = self.table_pos[0] + length_weight * 2 * (self._blockRandom * random.random() - 0.5) - self._shift[0]
-        # ypos = self.table_pos[1] + width_weight * 2* (self._blockRandom * random.random() - 0.5) - self._shift[0]
-        # for circle
         obj_path = '/'.join(urdfList[0].split('/')[:-1]) + '/'
         self.target_idx = self.obj_path.index(os.path.join(self.root_dir, obj_path)) 
         self.placed_objects[self.target_idx] = True
         self.target_name = urdfList[0].split('/')[-2]
 
-        angle = random.uniform(0, 2 * math.pi)
-        radius = 0.5 * random.uniform(0, self.table_radius)     
+        pos, _ = p.getBasePositionAndOrientation(self._panda.pandaUid)
+        origin_x = pos[0]
+        origin_y = pos[1]
+        origin_z = pos[2]
 
-        xpos = self.table_pos[0] + 0.8 * radius * math.cos(angle) - self._shift[0]
-        ypos = self.table_pos[1] + 0.8 * radius * math.sin(angle) - self._shift[0]
-        height_weight = self.object_heights[self.target_idx]
-        z_init = 0.4 + 1 * height_weight
-        orn = p.getQuaternionFromEuler([0, 0, np.random.uniform(-np.pi, np.pi)])
+        # for plane
+        length_weight = 0.215
+        width_weight = 0.0
+        height_weight = 0.8
+        x_random = np.random.uniform(-0.1, 0.1)
+        y_random = np.random.uniform(-0.25, 0.25)
+        xpos = origin_x + length_weight
+        ypos = origin_y + width_weight
+        z_init = origin_z + height_weight
+        orn = p.getQuaternionFromEuler([np.random.uniform(-np.pi, np.pi), np.random.uniform(-np.pi, np.pi), np.random.uniform(-np.pi, np.pi)])
+        # orn = p.getQuaternionFromEuler([0, 1.57, 0])
         mesh_scale = self.object_scales[self.target_idx]
 
         uid = self._add_mesh(os.path.join(self.root_dir, obj_path, 'model_normalized.urdf'),
@@ -498,7 +488,22 @@ class SimulatedYCBEnv():
         hand_cam_view_matrix = se3_inverse(cam_pose_mat.dot(rotX(np.pi/2).dot(rotY(-np.pi/2)))).T  # z backward
 
         lightDistance = 2.0
-        lightDirection = self.table_pos - self._light_position
+
+        pos, _ = p.getBasePositionAndOrientation(self._panda.pandaUid)
+        origin_x = pos[0]
+        origin_y = pos[1]
+        origin_z = pos[2]
+
+        # for plane
+        length_weight = 0.215
+        width_weight = 0.1
+        height_weight = 0.61
+        xpos = origin_x + length_weight
+        ypos = origin_y + width_weight
+        z_init = origin_z + height_weight
+        center = np.array([xpos, ypos, z_init])
+
+        lightDirection = center - self._light_position
         lightColor = np.array([1., 1., 1.])
         light_center = np.array([-1.0, 0, 2.5])
         return hand_cam_view_matrix, hand_proj_matrix, lightDistance, lightColor, lightDirection, hand_near, hand_far
