@@ -27,7 +27,18 @@ ${SUDO} pip3 install -vU pygccxml pyplusplus
 ${SUDO} add-apt-repository ppa:pypy/ppa
 ${SUDO} apt-get update
 ${SUDO} apt-get -y install pypy3
+
 # #install ompl
+git clone https://github.com/ompl/ompl.git
+cd ompl
+# 改用1.5.2版本就好了
+git checkout tags/1.5.2
+mkdir -p build/Release
+cd build/Release
+cmake ../..
+make -j 20 update_bindings
+make -j 20
+sudo make install
 # git clone -b 1.6.0 https://github.com/ompl/ompl.git
 # cd ompl
 # mkdir -p build/Release
@@ -45,3 +56,4 @@ ${SUDO} apt-get -y install pypy3
 #     self.ompl_ns.class_(f'SpecificParam< std::basic_string< char > >').rename('SpecificParamString')
 
 # pip3 install pygccxml==2.2.1
+

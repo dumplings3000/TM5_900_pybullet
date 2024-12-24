@@ -1,0 +1,65 @@
+<?xml version="1.0" ?>
+<!--html-->
+<robot name="agv_robot">
+
+  <link name="laser">
+    <visual>
+      <origin xyz="0.0 0.0 0" rpy="0 0 0" />
+      <geometry>
+        <!-- <cylinder length="0.05" radius="0.03" /> -->
+        <mesh filename="package://sick_tim/meshes/sick_tim551.stl"/>
+      </geometry>
+      <material name="orange" />
+    </visual>
+  </link>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="-0.35 0 -0.05" rpy="0 0 -1.5708" />
+      <geometry>
+        <mesh filename="package://robot_basic/AMR/AMR_CAD_v1.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="">
+          <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_link_to_laser_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="laser" />
+    <origin xyz="0.35 0.0 0.0" />
+  </joint>
+
+  <material name="gray">
+      <color rgba="0.5 0.5 0.5 1.0" />
+  </material>
+  <material name="white">
+      <color rgba="0.95 0.95 0.95 1.0" />
+  </material>
+  <material name="red">
+      <color rgba="0.95 0.0 0.0 1.0" />
+  </material>
+  <material name="orange">
+      <color rgba="1.0 0.5 0.0 1.0" />
+  </material>
+  <material name="yellow">
+      <color rgba="1.0 1.0 0.0 1.0" />
+  </material>
+  <material name="green">
+      <color rgba="0.0 1.0 0.0 1.0" />
+  </material>
+  <material name="blue">
+      <color rgba="0.0 0.0 1.0 1.0" />
+  </material>
+  <material name="indigo">
+      <color rgba="0.3 0.3 0.6 1.0" />
+  </material>
+  <material name="violet">
+      <color rgba="0.6 0.0 1.0 1.0" />
+  </material>
+  <material name="black">
+      <color rgba="0.0 0.0 0.0 1.0" />
+  </material>
+
+</robot>

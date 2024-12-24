@@ -1,0 +1,375 @@
+<robot name="agv_robot" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <link name="base_link" /> 
+
+  <link name="link_chassis">
+    <!-- pose and inertial -->
+    <inertial>
+      <mass value="50" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <inertia
+        ixx="4.69"
+        ixy="0"
+        ixz="0"
+        iyy="5.77"
+        iyz="0"
+        izz="7.08" />
+    </inertial>
+    <visual>
+      <origin xyz="-0.35 0 0" rpy="0 0 -1.5708" />
+      <geometry>
+        <mesh filename="package://robot_basic/AMR/AMR_CAD_v1.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="">
+          <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_link_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="link_chassis" />
+    <origin xyz="0 0 0.05" rpy="0 0 0"/>
+  </joint>
+
+  <!-- left wheel -->
+  <link name="link_left_wheel">
+    <inertial>
+      <mass value="3.0" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <inertia
+        ixx="0.00856502765719703"
+        ixy="1.5074118157338E-19"
+        ixz="-4.78150098725052E-19"
+        iyy="0.013670640432096"
+        iyz="-2.68136447099727E-19"
+        izz="0.00856502765719703" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.05" />
+      </geometry>
+      <material name="">
+        <color rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.05" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_left_wheel" type="continuous">
+    <parent link="link_chassis" />
+    <child link="link_left_wheel" />
+    <origin xyz="0 -0.23 0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <dynamics damping="0.5"/>
+    <limit effort="10" velocity="20"/>
+  </joint>
+
+  <!-- right wheel -->
+  <link name="link_right_wheel">
+    <inertial>
+      <mass value="3.0" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <inertia
+        ixx="0.00856502765719703"
+        ixy="1.5074118157338E-19"
+        ixz="-4.78150098725052E-19"
+        iyy="0.013670640432096"
+        iyz="-2.68136447099727E-19"
+        izz="0.00856502765719703" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.05" />
+      </geometry>
+      <material name="gray" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.05" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_right_wheel" type="continuous">
+    <parent link="link_chassis" />
+    <child link="link_right_wheel" />
+    <origin xyz="0 0.23 0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <dynamics damping="0.5"/>
+    <limit effort="10" velocity="20"/>
+  </joint>
+
+  <!-- Front left caster wheel -->
+  <link name="front_left_caster">
+    <inertial>
+      <mass value="1.0" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <inertia ixx="0.0005" ixy="0.0" ixz="0.0" iyy="0.0005" iyz="0.0" izz="0.0005" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.04" />
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.04" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="front_left_caster_joint" type="continuous">
+    <parent link="link_chassis" />
+    <child link="front_left_caster" />
+    <origin xyz="-0.3 0.23 -0.01" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <dynamics damping="0.5"/>
+    <limit effort="10" velocity="20"/>
+  </joint>
+
+  <!-- Front right caster wheel -->
+  <link name="front_right_caster">
+    <inertial>
+      <mass value="1.0" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <inertia ixx="0.0005" ixy="0.0" ixz="0.0" iyy="0.0005" iyz="0.0" izz="0.0005" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.04" />
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.04" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="front_right_caster_joint" type="continuous">
+    <parent link="link_chassis" />
+    <child link="front_right_caster" />
+    <origin xyz="-0.3 -0.23 -0.01" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <dynamics damping="0.5"/>
+    <limit effort="10" velocity="20"/>
+  </joint>
+
+  <!-- Rear left caster wheel -->
+  <link name="rear_left_caster">
+    <inertial>
+      <mass value="1.0" />
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <inertia ixx="0.0005" ixy="0.0" ixz="0.0" iyy="0.0005" iyz="0.0" izz="0.0005" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.04" />
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.04" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="rear_left_caster_joint" type="continuous">
+    <parent link="link_chassis" />
+    <child link="rear_left_caster" />
+    <origin xyz="0.3 0.23 -0.01" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <dynamics damping="0.5"/>
+    <limit effort="10" velocity="20"/>
+  </joint>
+
+  <!-- Rear right caster wheel -->
+  <link name="rear_right_caster">
+    <inertial>
+      <mass value="1.0" />
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <inertia ixx="0.0005" ixy="0.0" ixz="0.0" iyy="0.0005" iyz="0.0" izz="0.0005" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
+      <geometry>
+        <cylinder length="0.03" radius="0.04" />
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder length="0.03" radius="0.04" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="rear_right_caster_joint" type="continuous">
+    <parent link="link_chassis" />
+    <child link="rear_right_caster" />
+    <origin xyz="0.3 -0.23 -0.01" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <dynamics damping="0.5"/>
+    <limit effort="10" velocity="20"/>
+  </joint>
+
+  <!-- add Sick_tim_link --> 
+  
+  <!-- Include the sick_tim xacro file -->
+  <xacro:include filename="$(find sick_tim)/urdf/sick_tim.urdf.xacro" />
+  <xacro:sick_tim551 name="sick_tim551" ros_topic="scan" />
+
+  <joint name="base_link_to_lidar_joint" type="fixed">
+    <parent link="link_chassis" />
+    <child link="sick_tim551_mount_link" />
+    <origin xyz="0.35 0.0 0.02" />
+  </joint>
+
+<!--########################## BASE TRANSMISSIONS ############################################-->
+  <transmission name="left_wheel_trans" type="SimpleTransmission">
+  <type>transmission_interface/SimpleTransmission</type>
+  <actuator name="left_wheel_motor">
+   <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+   <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+  <joint name="joint_left_wheel">
+   <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+  </joint>
+  </transmission>
+
+  <transmission name="right_wheel_trans" type="SimpleTransmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <actuator name="right_wheel_motor">
+    <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+    <joint name="joint_right_wheel">
+    <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+  </transmission>
+<!--######################################################################-->
+  <gazebo>
+    
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">/
+      <legacyModeNS>true</legacyModeNS>
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+    </plugin>
+
+    <!-- <plugin name="joint_state_publisher" filename="libgazebo_ros_joint_state_publisher.so">
+      <jointName>shoulder_1_joint, shoulder_2_joint, elbow_joint, wrist_1_joint, wrist_2_joint,wrist_3_joint</jointName>
+    </plugin> -->
+
+    <!-- <plugin name="gazebo_ros_control_select_joints" filename="libgazebo_ros_control_select_joints.so">
+      <legacyModeNS>true</legacyModeNS>
+      <jointName>shoulder_1_joint, shoulder_2_joint, elbow_joint, wrist_1_joint, wrist_2_joint,wrist_3_joint</jointName>
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+    </plugin> -->
+  </gazebo>
+
+<!--######################################################################-->
+  <gazebo>
+    <plugin name="diff_drive_controller" filename="libgazebo_ros_diff_drive.so">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>100.0</updateRate> <!-- 100 -->
+      <leftJoint>joint_right_wheel</leftJoint>
+      <rightJoint>joint_left_wheel</rightJoint>
+      <wheelSeparation>0.5</wheelSeparation>
+      <wheelDiameter>0.16</wheelDiameter>
+      <publishTf>true</publishTf>
+      <odometryFrame>odom</odometryFrame>
+      <commandTopic>cmd_vel</commandTopic>
+      <odometryTopic>odom</odometryTopic>
+      <robotBaseFrame>base_link</robotBaseFrame>
+      <wheelAcceleration>3.0</wheelAcceleration>
+      <wheelTorque>30</wheelTorque>
+      <publishWheelJointState>false</publishWheelJointState>
+      <publishWheelTF>false</publishWheelTF>
+      <odometrySource>world</odometrySource>
+      <rosDebugLevel>Debug</rosDebugLevel>
+      <publishOdomTF>true</publishOdomTF>
+    </plugin>
+  </gazebo>
+<!--######################################################################-->
+
+  <gazebo reference="link_chassis">
+    <material>Gazebo/White</material>
+  </gazebo>
+  <gazebo reference="link_left_wheel">
+    <material>Gazebo/Black</material>
+  </gazebo>
+  <gazebo reference="link_right_wheel">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="front_left_caster">
+    <mu1>0.00001</mu1>
+    <mu2>0.00001</mu2>
+    <material>Gazebo/Indigo</material>
+  </gazebo>
+  <gazebo reference="front_right_caster">
+    <mu1>0.00001</mu1>
+    <mu2>0.00001</mu2>
+    <material>Gazebo/Indigo</material>
+  </gazebo>
+  <gazebo reference="rear_left_caster">
+    <mu1>0.00001</mu1>
+    <mu2>0.00001</mu2>
+    <material>Gazebo/Indigo</material>
+  </gazebo>
+  <gazebo reference="rear_right_caster">
+    <mu1>0.00001</mu1>
+    <mu2>0.00001</mu2>
+    <material>Gazebo/Indigo</material>
+  </gazebo>
+
+  <material name="gray">
+      <color rgba="0.5 0.5 0.5 1.0" />
+  </material>
+  <material name="white">
+      <color rgba="0.95 0.95 0.95 1.0" />
+  </material>
+  <material name="red">
+      <color rgba="0.95 0.0 0.0 1.0" />
+  </material>
+  <material name="orange">
+      <color rgba="1.0 0.5 0.0 1.0" />
+  </material>
+  <material name="yellow">
+      <color rgba="1.0 1.0 0.0 1.0" />
+  </material>
+  <material name="green">
+      <color rgba="0.0 1.0 0.0 1.0" />
+  </material>
+  <material name="blue">
+      <color rgba="0.0 0.0 1.0 1.0" />
+  </material>
+  <material name="indigo">
+      <color rgba="0.3 0.3 0.6 1.0" />
+  </material>
+  <material name="violet">
+      <color rgba="0.6 0.0 1.0 1.0" />
+  </material>
+  <material name="black">
+      <color rgba="0.0 0.0 0.0 1.0" />
+  </material>
+
+</robot>
