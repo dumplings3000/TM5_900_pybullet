@@ -331,12 +331,13 @@ class SimulatedYCBEnv():
             origin_z = pos[2]
             origin_z += 0.66
             length_weight = 0.21
+            single_release = False
 
             if if_stack:
                 self.place_back_objects()
                 for i in range(len(urdfList)):
                     #Henry test 20230831 （多物體才會跑這>1）
-                    # print("single_release : ",single_release)
+                    print("single_release : ",single_release)
                     if single_release == True:
                         # print("single_release!")
 
@@ -567,8 +568,8 @@ class SimulatedYCBEnv():
         Environment step.
         """
         action = self.process_action(action, delta, config)
-        if not config:
-            action[6] = 0.85
+        # if not config:
+        #     action[6] = 0.85
         self._panda.setTargetPositions(action)
         for _ in range(int(repeat)):
             p.stepSimulation()

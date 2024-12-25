@@ -135,7 +135,7 @@ class Actor(object):
         self.right_camera2world = self.cam_offset@ np.linalg.inv(self.right_view_ef_mat)@ self.world_frame_pose
 
     def load_environment(self):
-        file = os.path.join(self.parent_dir, "object_index", "ycb_large.json")
+        file = os.path.join(self.parent_dir, "object_index", "sam.json")
         with open(file) as f: file_dir = json.load(f)
         file_dir = file_dir["test"]
         file_dir = [f[:-5] for f in file_dir]
@@ -580,8 +580,8 @@ class Actor(object):
         self.place_pose_world = self.cabinet_pose_world.copy()
         self.place_pose_world[:3, 3] += np.array([x_translation, y_translation, z_translation])
         if self.vis_draw_coordinate:
-            self.env.draw_ef_coordinate(self.cabinet_pose_world, 0)
-            self.env.draw_ef_coordinate(self.place_pose_world, 0)
+            self.env.draw_ef_coordinate(self.cabinet_pose_world, 5)
+            self.env.draw_ef_coordinate(self.place_pose_world, 5)
 
     def tranfrom_grasp_to_place(self):
         pred_grasps_cam = np.load(os.path.join(self.parent_dir, 'results/pred_grasps_cam.npy'), allow_pickle=True)
@@ -599,7 +599,7 @@ class Actor(object):
         np.save(os.path.join(self.parent_dir, 'results/new_pred_grasps_cam_place.npy'), new_pred_grasps_cam_place)
 
     def object_record_init(self):
-        file = os.path.join(self.parent_dir, "object_index", 'ycb_large.json')
+        file = os.path.join(self.parent_dir, "object_index", 'sam.json')
         with open(file) as f:
             file_dir = json.load(f)
         file_dir = file_dir['test']
@@ -676,6 +676,8 @@ class Actor(object):
         else:
             self.count_location += 1
 
+        self.env.draw_ef_coordinate(self.final_grasp_pose, 5)
+        self.env.draw_ef_coordinate(self.final_grasp_pose_z_bias, 5)
         # start execute the setting poses
         self.execute_motion_and_check_pose(self.final_grasp_pose_z_bias, gripper_state="open")
         img = ImageGrab.grab()
@@ -688,13 +690,18 @@ class Actor(object):
         if not self.reward_checker:
             self.grasp_fail_rate += 1
             return
-        self.execute_motion_and_check_pose(self.mid_retract_pose, tolerance = 0.1, gripper_state="close", repeat=100)
+        # self.execute_motion_and_check_pose(self.mid_retract_pose, tolerance = 0.1, gripper_state="close", repeat=100)
         img = ImageGrab.grab()
         random = np.random.randint(0, 1000)
         img.save(os.path.join(self.parent_dir, f'results/scene_mid_{random}.png'))
+
+        self.env.draw_ef_coordinate(self.final_place_pose_z_bias_top, 5)
+        self.env.draw_ef_coordinate(self.final_place_pose_z_bias_placing, 5)
+
         self.execute_motion_and_check_pose(self.final_place_pose_z_bias_top, gripper_state="close")
         self.execute_motion_and_check_pose(self.final_place_pose_z_bias_placing, gripper_state="close", repeat=100)
         move_gripper_smoothly(self.env, p, 0.0, 0.085)  # open
+        self.env.draw_ef_coordinate(self.final_place_pose_z_bias_release, 5)
         self.execute_motion_and_check_pose(self.final_place_pose_z_bias_release, gripper_state="open", repeat=50)
         img = ImageGrab.grab()
         random = np.random.randint(0, 1000)
@@ -789,10 +796,13 @@ class Actor(object):
                     final_place_target_matrix = self.place_pose_world@ get_rotation_matrix_z_4x4(-self.result_z_rotation_angle/90)
                     tcp_utils.send_matrix('127.0.0.1', 33333, final_place_target_matrix)
                     time.sleep(3)
+                    self.env.draw_ef_coordinate(self.place_pose_world, 5)
                     tcp_utils.send_matrix('127.0.0.1', 55557, self.place_pose_world)
                     time.sleep(3)
+                    self.env.draw_ef_coordinate(self.target_pose_world, 5)
                     tcp_utils.send_matrix('127.0.0.1', 56471, self.target_pose_world)
                     self.final_place_grasp_pose = tcp_utils.start_server('127.0.0.1', 44412)
+                    self.env.draw_ef_coordinate(self.final_place_grasp_pose, 5)
                     if np.array_equal(self.final_place_grasp_pose, np.eye(4)):
                         print("The placing mode is not success")
                         no_grasp_pose_rate += 1

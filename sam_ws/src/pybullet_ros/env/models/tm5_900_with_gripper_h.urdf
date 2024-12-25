@@ -1,244 +1,9 @@
 <?xml version="1.0" ?>
-<!-- ####################################################### MOBILE BASE ####################################################### -->
-<robot name="mobile_manipulator">
-  <!-- robot base -->
-  <link name="car_base" /> 
-
-  <link name="link_chassis">
-    <!-- pose and inertial -->
-    <inertial>
-      <mass value="200" />
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <inertia
-        ixx="4.69"
-        ixy="0"
-        ixz="0"
-        iyy="5.77"
-        iyz="0"
-        izz="7.08" />
-    </inertial>
-    <visual>
-      <origin xyz="-0.35 0 0" rpy="0 0 -1.5708" />
-      <geometry>
-        <mesh filename="package://syntec/meshes/amr_all.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="">
-          <color rgba="0.79216 0.81961 0.93333 1" />
-      </material>
-    </visual>
-  </link>
-
-  <joint name="base_joint" type="fixed">
-    <parent link="car_base" />
-    <child link="link_chassis" />
-    <origin xyz="0 0 0.1" rpy="0 0 -3.14"/>
-  </joint>
-
-  <!-- left wheel -->
-  <link name="link_left_wheel">
-    <inertial>
-      <mass value="3.0" />
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <inertia
-        ixx="0.00856502765719703"
-        ixy="1.5074118157338E-19"
-        ixz="-4.78150098725052E-19"
-        iyy="0.013670640432096"
-        iyz="-2.68136447099727E-19"
-        izz="0.00856502765719703" />
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.05" />
-      </geometry>
-      <material name="">
-        <color rgba="0.79216 0.81961 0.93333 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.05" />
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="joint_left_wheel" type="continuous">
-    <parent link="link_chassis" />
-    <child link="link_left_wheel" />
-    <origin xyz="0 -0.23 0" rpy="0 0 0" />
-    <axis xyz="0 1 0" />
-    <dynamics damping="0.5"/>
-    <limit effort="10" velocity="20"/>
-  </joint>
-
-  <!-- right wheel -->
-  <link name="link_right_wheel">
-    <inertial>
-      <mass value="3.0" />
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <inertia
-        ixx="0.00856502765719703"
-        ixy="1.5074118157338E-19"
-        ixz="-4.78150098725052E-19"
-        iyy="0.013670640432096"
-        iyz="-2.68136447099727E-19"
-        izz="0.00856502765719703" />
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />      
-      <geometry>
-        <cylinder length="0.03" radius="0.05" />
-      </geometry>
-      <material name="gray" />
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.05" />
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="joint_right_wheel" type="continuous">
-    <parent link="link_chassis" />
-    <child link="link_right_wheel" />
-    <origin xyz="0 0.23 0" rpy="0 0 0" />
-    <axis xyz="0 1 0" />
-    <dynamics damping="0.5"/>
-    <limit effort="10" velocity="20"/>
-  </joint>
-
-  <!-- Front left caster wheel -->
-  <link name="front_left_caster">
-    <inertial>
-      <mass value="1.0" />
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <inertia ixx="0.0005" ixy="0.0" ixz="0.0" iyy="0.0005" iyz="0.0" izz="0.0005" />
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.04" />
-      </geometry>
-      <material name="black" />
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.04" />
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="front_left_caster_joint" type="continuous">
-    <parent link="link_chassis" />
-    <child link="front_left_caster" />
-    <origin xyz="-0.3 0.23 -0.01" rpy="0 0 0" />
-    <axis xyz="0 1 0" />
-    <dynamics damping="0.5"/>
-    <limit effort="10" velocity="20"/>
-  </joint>
-
-  <!-- Front right caster wheel -->
-  <link name="front_right_caster">
-    <inertial>
-      <mass value="1.0" />
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <inertia ixx="0.0005" ixy="0.0" ixz="0.0" iyy="0.0005" iyz="0.0" izz="0.0005" />
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.04" />
-      </geometry>
-      <material name="black" />
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.04" />
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="front_right_caster_joint" type="continuous">
-    <parent link="link_chassis" />
-    <child link="front_right_caster" />
-    <origin xyz="-0.3 -0.23 -0.01" rpy="0 0 0" />
-    <axis xyz="0 1 0" />
-    <dynamics damping="0.5"/>
-    <limit effort="10" velocity="20"/>
-  </joint>
-
-  <!-- Rear left caster wheel -->
-  <link name="rear_left_caster">
-    <inertial>
-      <mass value="1.0" />
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <inertia ixx="0.0005" ixy="0.0" ixz="0.0" iyy="0.0005" iyz="0.0" izz="0.0005" />
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.04" />
-      </geometry>
-      <material name="black" />
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.04" />
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="rear_left_caster_joint" type="continuous">
-    <parent link="link_chassis" />
-    <child link="rear_left_caster" />
-    <origin xyz="0.3 0.23 -0.01" rpy="0 0 0" />
-    <axis xyz="0 1 0" />
-    <dynamics damping="0.5"/>
-    <limit effort="10" velocity="20"/>
-  </joint>
-
-  <!-- Rear right caster wheel -->
-  <link name="rear_right_caster">
-    <inertial>
-      <mass value="1.0" />
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <inertia ixx="0.0005" ixy="0.0" ixz="0.0" iyy="0.0005" iyz="0.0" izz="0.0005" />
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 1.5708 1.5708" />
-      <geometry>
-        <cylinder length="0.03" radius="0.04" />
-      </geometry>
-      <material name="black" />
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <cylinder length="0.03" radius="0.04" />
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="rear_right_caster_joint" type="continuous">
-    <parent link="link_chassis" />
-    <child link="rear_right_caster" />
-    <origin xyz="0.3 -0.23 -0.01" rpy="0 0 0" />
-    <axis xyz="0 1 0" />
-    <dynamics damping="0.5"/>
-    <limit effort="10" velocity="20"/>
-  </joint>
-  <!-- ####################################################### TM5 900 ####################################################### -->
-  <!-- robot arm -->
+<robot name="tm5_900">
   <link name="base_link">
     <visual>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/tm5_base.obj"/>
+        <mesh filename="package://meshes/visual/tm5_base.obj"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="0.5 0.5 0.5 1.0"/>
@@ -246,7 +11,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/tm5_base_c.stl"/>
+        <mesh filename="package://meshes/collision/tm5_base_c.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -267,7 +32,7 @@
   <link name="shoulder_1_link">
     <visual>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/tm_400w_01.obj"/>
+        <mesh filename="package://meshes/visual/tm_400w_01.obj"/>
       </geometry>
       <material name="DarkOlive">
         <color rgba="0.3 0.3 0.25 1.0"/>
@@ -275,7 +40,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/tm_400w_01_c.stl"/>
+        <mesh filename="package://meshes/collision/tm_400w_01_c.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -296,7 +61,7 @@
   <link name="arm_1_link">
     <visual>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/tm5_900_arm1.obj"/>
+        <mesh filename="package://meshes/visual/tm5_900_arm1.obj"/>
       </geometry>
       <material name="DarkOlive">
         <color rgba="0.3 0.3 0.25 1.0"/>
@@ -304,7 +69,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/tm5_900_arm1_c.stl"/>
+        <mesh filename="package://meshes/collision/tm5_900_arm1_c.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -325,7 +90,7 @@
   <link name="arm_2_link">
     <visual>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/tm5_900_arm2.obj"/>
+        <mesh filename="package://meshes/visual/tm5_900_arm2.obj"/>
       </geometry>
       <material name="DarkOlive">
         <color rgba="0.3 0.3 0.25 1.0"/>
@@ -333,7 +98,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/tm5_900_arm2_c.stl"/>
+        <mesh filename="package://meshes/collision/tm5_900_arm2_c.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -354,7 +119,7 @@
   <link name="wrist_1_link">
     <visual>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/tm_100w_01.obj"/>
+        <mesh filename="package://meshes/visual/tm_100w_01.obj"/>
       </geometry>
       <material name="DarkOlive">
         <color rgba="0.3 0.3 0.25 1.0"/>
@@ -362,11 +127,11 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/tm_100w_01_c.stl"/>
+        <mesh filename="package://meshes/collision/tm_100w_01_c.stl"/>
       </geometry>
     </collision>
     <inertial>
-     <mass value="0.85"/>
+      <mass value="0.85"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <inertia ixx="0.002474061510375" ixy="0.0" ixz="0.0" iyy="0.001468125" iyz="0.0" izz="0.002474061510375"/>
     </inertial>
@@ -383,7 +148,7 @@
   <link name="wrist_2_link">
     <visual>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/tm_100w_02.obj"/>
+        <mesh filename="package://meshes/visual/tm_100w_02.obj"/>
       </geometry>
       <material name="DarkOlive">
         <color rgba="0.3 0.3 0.25 1.0"/>
@@ -391,7 +156,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/tm_100w_02_c.stl"/>
+        <mesh filename="package://meshes/collision/tm_100w_02_c.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -412,7 +177,7 @@
   <link name="wrist_3_link">
     <visual>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/tm_ee.obj"/>
+        <mesh filename="package://meshes/visual/tm_ee.obj"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="0.5 0.5 0.5 1.0"/>
@@ -420,7 +185,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/tm_ee_c.stl"/>
+        <mesh filename="package://meshes/collision/tm_ee_c.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -430,10 +195,11 @@
     </inertial>
   </link>
   <!-- ROS base to TM 'base_link' Coordinates transform -->
+  <link name="base"/>
   <joint name="base-base_link" type="fixed">
-    <parent link="link_chassis"/>
+    <parent link="base"/>
     <child link="base_link"/>
-    <origin rpy="1.570795 0 3.14" xyz="0.205 0 0.745"/>
+    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
     <!-- Note: 0.5 * pi -->
   </joint>
   <joint name="flange_fixed_joint" type="fixed">
@@ -448,7 +214,6 @@
       <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
     </inertial>
   </link>
-  <!-- ####################################################### robotiq gripper ####################################################### -->
   <!-- gripper     -->
   <joint name="gripper_hand_joint" type="fixed">
     <parent link="flange_link"/>
@@ -465,7 +230,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_base_link.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_base_link.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="0.7 0.7 0.7 1.0"/>
@@ -474,7 +239,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_base_link.stl"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_base_link.stl"/>
       </geometry>
     </collision>
   </link>
@@ -494,7 +259,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_outer_knuckle.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_outer_knuckle.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="">
         <color rgba="1 1 0 1"/>
@@ -503,7 +268,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_85_outer_knuckle.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_85_outer_knuckle.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -522,7 +287,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_outer_finger.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_outer_finger.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="0 1 1 1.0"/>
@@ -531,7 +296,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_85_outer_finger.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_85_outer_finger.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -552,7 +317,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_inner_finger.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_inner_finger.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="1 0 1 1.0"/>
@@ -561,7 +326,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_85_inner_finger.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_85_inner_finger.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -580,7 +345,7 @@
       <lateral_friction value="5.0"/>
     </contact>
     <inertial>
-      <mass value="1."/>
+      <mass value="0.02"/>
       <inertia ixx="1E-10" ixy="1E-10" ixz="1E-10" iyy="1E-10" iyz="1E-10" izz="1E-10"/>
     </inertial>
     <visual>
@@ -620,7 +385,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_inner_knuckle.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_inner_knuckle.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="0 0 1 1.0"/>
@@ -629,7 +394,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_85_inner_knuckle.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_85_inner_knuckle.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -650,7 +415,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_outer_knuckle.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_outer_knuckle.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="">
         <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
@@ -659,7 +424,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_85_outer_knuckle.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_85_outer_knuckle.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -678,7 +443,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_outer_finger.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_outer_finger.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="0.7 0.7 0.7 1.0"/>
@@ -687,7 +452,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_85_outer_finger.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_85_outer_finger.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -708,7 +473,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_inner_finger.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_inner_finger.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1"/>
@@ -717,7 +482,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_85_inner_finger.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_85_inner_finger.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -736,7 +501,7 @@
       <lateral_friction value="5.0"/>
     </contact>
     <inertial>
-      <mass value="1"/>
+      <mass value="0.02"/>
       <inertia ixx="1E-10" ixy="1E-10" ixz="1E-10" iyy="1E-10" iyz="1E-10" izz="1E-10"/>
     </inertial>
     <visual>
@@ -776,7 +541,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/visual/robotiq_arg2f_85_inner_knuckle.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/visual/robotiq_arg2f_85_inner_knuckle.dae" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="0.7 0.7 0.7 1.0"/>
@@ -785,17 +550,16 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/robotiq_arg2f_85_inner_knuckle.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://meshes/collision/robotiq_arg2f_85_inner_knuckle.dae" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
-  <!-- ####################################################### Eye in hand cameara  ####################################################### -->
   <link name="camera_link">
     <visual>
       <!-- the mesh origin is at front plate in between the two infrared camera axes -->
       <origin rpy="1.5707963267948966 0 1.5707963267948966" xyz="0.0043 -0.0175 0"/>
       <geometry>
-        <mesh filename="package://tm5_900/meshes/collision/d435.dae"/>
+        <mesh filename="package://meshes/collision/d435.dae"/>
       </geometry>
       <material name="plastic">
         <color rgba="0.5 0.5 0.5 1.0"/>
@@ -820,130 +584,4 @@
     <origin rpy="0 -1.57 -1.57" xyz="0 0.1186 0.0191344123493"/>
     <!-- <origin rpy="3.14 -1.57 1.57" xyz="-0.0384158789508 0.0966652170148 0.0191344123493"/> -->
   </joint>
-
-  <!-- ####################################################### Storage box ####################################################### -->
-  <link name="box">
-    <!-- 底部設置 -->
-    <visual>
-      <geometry>
-        <box size="0.264 0.59 0.01" />
-      </geometry>
-      <origin xyz="-0.215 0 0.61" rpy="0 0 0" />
-      <material name="green">
-        <color rgba="0.0 1.0 0.0 1.0" />
-      </material>
-    </visual>
-    
-    <collision>
-      <geometry>
-        <box size="0.264 0.59 0.01" />
-      </geometry>
-      <origin xyz="-0.215 0 0.61" rpy="0 0 0" />
-    </collision>
-    
-    <!-- 左右側板 -->
-    <visual>
-      <geometry>
-        <box size="0.01 0.59 0.1" />
-      </geometry>
-      <origin xyz="-0.347 0 0.645" rpy="0 0 0" />
-      <material name="green">
-        <color rgba="0.0 1.0 0.0 1.0" />
-      </material>
-    </visual>
-    <visual>
-      <geometry>
-        <box size="0.01 0.59 0.1" />
-      </geometry>
-      <origin xyz="-0.083 0 0.645" rpy="0 0 0" />
-      <material name="green">
-        <color rgba="0.0 1.0 0.0 1.0" />
-      </material>
-    </visual>
-    
-    <!-- 前後側板 -->
-    <visual>
-      <geometry>
-        <box size="0.264 0.01 0.1" />
-      </geometry>
-      <origin xyz="-0.215 -0.29 0.645" rpy="0 0 0" />
-      <material name="green">
-        <color rgba="0.0 1.0 0.0 1.0" />
-      </material>
-    </visual>
-    <visual>
-      <geometry>
-        <box size="0.264 0.01 0.1" />
-      </geometry>
-      <origin xyz="-0.215 0.29 0.645" rpy="0 0 0" />
-      <material name="green">
-        <color rgba="0.0 1.0 0.0 1.0" />
-      </material>
-    </visual>
-    
-    <!-- 碰撞設置 -->
-    <collision>
-      <geometry>
-        <box size="0.01 0.59 0.1" />
-      </geometry>
-      <origin xyz="-0.347 0 0.645" rpy="0 0 0" />
-    </collision>
-    <collision>
-      <geometry>
-        <box size="0.01 0.59 0.1" />
-      </geometry>
-      <origin xyz="-0.083 0 0.645" rpy="0 0 0" />
-    </collision>
-    <collision>
-      <geometry>
-        <box size="0.264 0.01 0.1" />
-      </geometry>
-      <origin xyz="-0.215 -0.29 0.645" rpy="0 0 0" />
-    </collision>
-    <collision>
-      <geometry>
-        <box size="0.264 0.01 0.1" />
-      </geometry>
-      <origin xyz="-0.215 0.29 0.645" rpy="0 0 0" />
-    </collision>
-  </link>
-  <!-- Joints -->
-  <joint name="box—joint" type="fixed">
-    <parent link="link_chassis"/>
-    <child link="box"/>
-    <origin xyz="0 0 0" rpy="0 0 0" />
-  </joint>
-
-    <!-- ####################################################### Colored materials ####################################################### -->
-  <material name="gray">
-      <color rgba="0.5 0.5 0.5 1.0" />
-  </material>
-  <material name="white">
-      <color rgba="0.95 0.95 0.95 1.0" />
-  </material>
-  <material name="red">
-      <color rgba="0.95 0.0 0.0 1.0" />
-  </material>
-  <material name="orange">
-      <color rgba="1.0 0.5 0.0 1.0" />
-  </material>
-  <material name="yellow">
-      <color rgba="1.0 1.0 0.0 1.0" />
-  </material>
-  <material name="green">
-      <color rgba="0.0 1.0 0.0 1.0" />
-  </material>
-  <material name="blue">
-      <color rgba="0.0 0.0 1.0 1.0" />
-  </material>
-  <material name="indigo">
-      <color rgba="0.3 0.3 0.6 1.0" />
-  </material>
-  <material name="violet">
-      <color rgba="0.6 0.0 1.0 1.0" />
-  </material>
-  <material name="black">
-      <color rgba="0.0 0.0 0.0 1.0" />
-  </material>
-  
 </robot>

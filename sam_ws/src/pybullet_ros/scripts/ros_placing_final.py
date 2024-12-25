@@ -31,8 +31,6 @@ class PlacingNode:
         self.bridge = CvBridge()
         self.env = None
         self.planner = GraspPlanner()
-        self.contact_client = rospy.ServiceProxy('contact_graspnet/get_grasp_result', GraspGroup)
-        rospy.wait_for_service('contact_graspnet/get_grasp_result', timeout=30)
         self.execute = rospy.get_param('~execute', False)
         self.visual_simulation = rospy.get_param('~visual_simulation', False)
         self.vis_draw_coordinate = rospy.get_param('~vis_draw_coordinate', True)
@@ -68,61 +66,6 @@ class PlacingNode:
         self.success_joint_grasp_list = []
         self.success_joint_mid_list = []
         self.success_joint_place_list = []
-
-        'ros 傳輸相關 data'
-        self.contact_client = rospy.ServiceProxy('contact_graspnet/get_grasp_result', GraspGroup)
-        rospy.wait_for_service('contact_graspnet/get_grasp_result')
-
-
-        '''
-        single release: (只在num_object = 1有用) true為以自己設定的角度放在桌上; (多object也可用)false就是pack放在桌上
-        if_stack: false代表旁邊有東西會擋住掉落下來的物體
-
-        _randomly_place_objects_pack
-        single_release/if_stack = t/t: 丟物體在桌上 沒遮擋
-        single_release/if_stack = f/t: pack物體在桌上 沒遮擋
-        single_release/if_stack = f/f: 丟物體在桌上 有遮擋
-        single_release/if_stack = t/f: 丟物體在桌上 有遮擋
-        '''
-
-
-        ### 將open3d下的點雲轉到world座標
-        self.world_frame_pose = np.array([[ 1.,    0.,    0.,   -0.0],
-                                    [ 0.,    1.,    0.,    0.  ],
-                                    [ 0.,    0.,    1.,   -0.],
-                                    [ 0.,    0.,    0.,    1.  ]])
-
-        self.init_ef_mat = np.array([[ 0, 1,  0, 0.135],
-                                    [ 1,  0,  0,  0],
-                                    [ 0,  0,  -1,  1.2],
-                                    [ 0.0,  0.0,  0.0,  1.0]])
-        
-        self.left_view_ef_mat = np.array([[ 0.98757027,  0.02243495,  0.15556875,  0.15],
-                                    [ 0.14573556, -0.501431,   -0.85283533,  0.42],
-                                    [ 0.05887368,  0.86490672, -0.49846791, 1],
-                                    [ 0.,          0.,          0.,          1.]])
-
-        self.right_view_ef_mat = np.array([[ 0.98691477, -0.16087768,  0.010845,    0.145],
-                                    [-0.10172661, -0.55945926,  0.82015829, -0.42],
-                                    [-0.11584997, -0.81309514, -0.60164849, 1.2],
-                                    [ 0.,          0.,          0.,          1.]])
-
-        self.intrinsic_matrix = np.array([[320, 0, 320],
-                                    [0, 320, 320],
-                                    [0, 0, 1]])
-        
-        self.cam_offset = np.eye(4)
-        # 先轉到pybullet座標後再往上移動0.13變相機座標
-        self.cam_offset[:3, 3] = (np.array([0., 0.1186, -0.0191344123493]))
-        # open3d 和 pybullet中的coordinate要對z旋轉180度才會一樣
-        self.cam_offset[:3, :3] = np.array([[-1, 0, 0],
-                                        [0, -1, 0],
-                                        [0, 0, 1]])
-
-        ### 轉換關係
-        self.origin_camera2world = self.cam_offset@ np.linalg.inv(self.init_ef_mat)@ self.world_frame_pose
-        self.left_camera2world = self.cam_offset@ np.linalg.inv(self.left_view_ef_mat)@ self.world_frame_pose
-        self.right_camera2world = self.cam_offset@ np.linalg.inv(self.right_view_ef_mat)@ self.world_frame_pose
 
     def load_environment(self):
         file = os.path.join(self.parent_dir, "object_index", "ycb_large.json")

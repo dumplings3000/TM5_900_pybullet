@@ -43,6 +43,17 @@ class TM5:
         # robot parameters
         self.dof = p.getNumJoints(self.robot)
 
+
+        # # To control the gripper
+        mimic_parent_name = 'finger_joint'
+        mimic_children_names = {'right_outer_knuckle_joint': 1,
+                                'left_inner_knuckle_joint': 1,
+                                'right_inner_knuckle_joint': 1,
+                                'left_inner_finger_joint': -1,
+                                'right_inner_finger_joint': -1}
+        mimic_parent_id = []
+        mimic_child_multiplier = {}
+
         print("DOF of the robot: ", self.dof)
         for joint_index in range(self.dof):
             joint_info = p.getJointInfo(self.pandaUid, joint_index)
@@ -63,15 +74,6 @@ class TM5:
             print(f"  Torque: {torque}")
             print("----------------------------")
 
-        # # To control the gripper
-        mimic_parent_name = 'finger_joint'
-        mimic_children_names = {'right_outer_knuckle_joint': 1,
-                                'left_inner_knuckle_joint': 1,
-                                'right_inner_knuckle_joint': 1,
-                                'left_inner_finger_joint': -1,
-                                'right_inner_finger_joint': -1}
-        mimic_parent_id = []
-        mimic_child_multiplier = {}
         for i in range(p.getNumJoints(self.robot)):
             inf = p.getJointInfo(self.robot, i)
             name = inf[1].decode('utf-8')
@@ -131,8 +133,8 @@ class TM5:
         '''
         self.t = 0.0
         self.control_mode = "position"
-        p.resetBasePositionAndOrientation(self.pandaUid, self._base_position,
-                                          [0.000000, 0.000000, 0.000000, 1.000000])
+        # p.resetBasePositionAndOrientation(self.pandaUid, self._base_position,
+        #                                   [0.000000, 0.000000, 0.000000, 1.000000])
 
         if joints is None:
             self.target_pos = [
@@ -151,6 +153,9 @@ class TM5:
                 p.resetJointState(self.robot, j, targetValue=self.target_pos[j-8])
         self.resetController()
         self.setTargetPositions(self.target_pos)
+
+        # for _ in range(2000):
+        #     p.stepSimulation()
 
     def step(self):
         '''
@@ -214,6 +219,10 @@ class TM5:
         '''
         计算给定位置和方向的逆运动学解，返回相应的关节角度。
         '''
+        # return list(p.calculateInverseKinematics(self.robot,
+        #             14, pos, ori,
+        #             maxNumIterations=500,
+        #             residualThreshold=1e-8))
         jointPoses = list(p.calculateInverseKinematics(self.robot,
                                   14, pos, ori,
                                   maxNumIterations=500,
